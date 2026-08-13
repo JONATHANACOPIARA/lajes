@@ -47,7 +47,7 @@
                 </div>
             </div>
             <div class="headactions">
-                <button class="graybtn" style="width:auto" onclick="abrirImport()">Backup</button>
+                <button class="graybtn" style="width:auto" onclick="window.abrirImport()">Backup</button>
             </div>
         </div>
     </header>
@@ -64,11 +64,11 @@
             <div>
                 <div class="panel">
                     <h3>Ações</h3>
-                    <button class="greenbtn" onclick="novo()">+ NOVA VENDA</button>
-                    <button class="bluebtn" onclick="carregarVendas()">Atualizar Lista</button>
+                    <button class="greenbtn" onclick="window.novo()">+ NOVA VENDA</button>
+                    <button class="bluebtn" onclick="window.carregarVendas()">Atualizar Lista</button>
                     <hr>
                     <label>Filtrar Mês</label>
-                    <input type="month" id="filtroMes" onchange="render()">
+                    <input type="month" id="filtroMes" onchange="window.render()">
                 </div>
             </div>
             <div class="panel" style="overflow-x:auto">
@@ -117,7 +117,7 @@
                 </div>
                 <div class="actions">
                     <button type="submit" class="greenbtn">SALVAR</button>
-                    <button type="button" class="graybtn" onclick="fechar()">CANCELAR</button>
+                    <button type="button" class="graybtn" onclick="window.fechar()">CANCELAR</button>
                 </div>
             </form>
         </div>
@@ -128,81 +128,85 @@
         <div class="modalbox">
             <h2>Importar Backup</h2>
             <input type="file" id="jsonFile" accept=".json">
-            <button class="bluebtn" onclick="processarImport()">Importar Agora</button>
-            <button class="graybtn" onclick="fecharImport()">Fechar</button>
+            <button class="bluebtn" onclick="window.processarImport()">Importar Agora</button>
+            <button class="graybtn" onclick="window.fecharImport()">Fechar</button>
         </div>
     </div>
 
     <script>
-        const $ = id => document.getElementById(id);
-        const money = n => Number(n||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        let supabase = null, vendas = [];
+        var $ = function(id) { return document.getElementById(id); };
+        var money = function(n) { return Number(n||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
+        var supabase = null, vendas = [];
 
-        async function init() {
+        window.init = async function() {
             if (typeof SUPABASE_URL === 'undefined') {
                 alert("Erro: config.js não carregado ou incompleto.");
                 return;
             }
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
             console.log("Supabase inicializado");
-            await carregarVendas();
-        }
+            await window.carregarVendas();
+        };
 
-        async function carregarVendas() {
-            $('syncStatus').textContent = 'Sincronizando...';
+        window.carregarVendas = async function() {
+            var statusEl = $('syncStatus');
+            if (statusEl) statusEl.textContent = 'Sincronizando...';
+            
             const { data, error } = await supabase.from('vendas').select('*').order('data', { ascending: false });
+            
             if (error) {
-                $('syncStatus').textContent = 'Erro de conexão';
+                if (statusEl) statusEl.textContent = 'Erro de conexão';
                 console.error(error);
             } else {
                 vendas = data || [];
-                $('syncStatus').textContent = 'Sincronizado';
-                render();
+                if (statusEl) statusEl.textContent = 'Sincronizado';
+                window.render();
             }
-        }
+        };
 
-        function render() {
-            let filtered = [...vendas];
-            const mes = $('filtroMes').value;
-            if (mes) filtered = filtered.filter(v => v.data.startsWith(mes));
+        window.render = function() {
+            var filtered = [...vendas];
+            var mes = $('filtroMes').value;
+            if (mes) filtered = filtered.filter(function(v) { return v.data.startsWith(mes); });
 
-            let tVenda = 0, tRec = 0, tLucro = 0;
-            $('lista').innerHTML = filtered.map(v => {
-                const total = Number(v.valor) + Number(v.frete);
-                const lucro = total - Number(v.custo_estimado);
-                tVenda += total; tRec += Number(v.recebido); tLucro += lucro;
+            var tVenda = 0, tRec = 0, tLucro = 0;
+            var html = filtered.map(function(v) {
+                var total = Number(v.valor) + Number(v.frete || 0);
+                var lucro = total - Number(v.custo_estimado || 0);
+                tVenda += total; tRec += Number(v.recebido || 0); tLucro += lucro;
                 
-                return `<tr>
-                    <td>${new Date(v.data + 'T12:00').toLocaleDateString('pt-BR')}</td>
-                    <td><strong>${v.cliente}</strong><br><small>${v.pedido}</small></td>
-                    <td>${money(total)}</td>
-                    <td style="color:${lucro >= 0 ? 'green' : 'red'}">${money(lucro)}</td>
-                    <td><span class="badge ${Number(v.recebido) >= total ? 'pago' : 'pendente'}">${Number(v.recebido) >= total ? 'PAGO' : 'PENDENTE'}</span></td>
-                    <td>
-                        <button onclick="editar(${v.id})" style="width:auto;padding:5px 10px" class="bluebtn">Ed</button>
-                        <button onclick="excluir(${v.id})" style="width:auto;padding:5px 10px" class="redbtn">Ex</button>
-                    </td>
-                </tr>`;
+                return '<tr>' +
+                    '<td>' + new Date(v.data + 'T12:00').toLocaleDateString('pt-BR') + '</td>' +
+                    '<td><strong>' + v.cliente + '</strong><br><small>' + (v.pedido || '') + '</small></td>' +
+                    '<td>' + money(total) + '</td>' +
+                    '<td style="color:' + (lucro >= 0 ? 'green' : 'red') + '">' + money(lucro) + '</td>' +
+                    '<td><span class="badge ' + (Number(v.recebido) >= total ? 'pago' : 'pendente') + '">' + (Number(v.recebido) >= total ? 'PAGO' : 'PENDENTE') + '</span></td>' +
+                    '<td>' +
+                        '<button onclick="window.editar(' + v.id + ')" style="width:auto;padding:5px 10px" class="bluebtn">Ed</button>' +
+                        '<button onclick="window.excluir(' + v.id + ')" style="width:auto;padding:5px 10px" class="redbtn">Ex</button>' +
+                    '</td>' +
+                '</tr>';
             }).join('');
 
+            $('lista').innerHTML = html;
             $('tot').textContent = money(tVenda);
             $('rec').textContent = money(tRec);
             $('arec').textContent = money(tVenda - tRec);
             $('lucro').textContent = money(tLucro);
-        }
+        };
 
-        function novo() {
+        window.novo = function() {
             $('tituloModal').textContent = 'Nova Venda';
             $('formVenda').reset();
             $('vendaId').value = '';
             $('data').value = new Date().toISOString().slice(0, 10);
             $('modal').style.display = 'block';
-        }
+        };
 
-        function fechar() { $('modal').style.display = 'none'; }
+        window.fechar = function() { $('modal').style.display = 'none'; };
 
-        function editar(id) {
-            const v = vendas.find(x => x.id == id);
+        window.editar = function(id) {
+            var v = vendas.find(function(x) { return x.id == id; });
             if (!v) return;
             $('tituloModal').textContent = 'Editar Venda';
             $('vendaId').value = v.id;
@@ -214,19 +218,19 @@
             $('recebido').value = v.recebido;
             $('status').value = v.status;
             $('modal').style.display = 'block';
-        }
+        };
 
-        async function excluir(id) {
+        window.excluir = async function(id) {
             if (!confirm("Excluir esta venda?")) return;
             const { error } = await supabase.from('vendas').delete().eq('id', id);
             if (error) alert("Erro ao excluir");
-            else await carregarVendas();
-        }
+            else await window.carregarVendas();
+        };
 
-        $('formVenda').onsubmit = async (e) => {
+        $('formVenda').onsubmit = async function(e) {
             e.preventDefault();
-            const id = $('vendaId').value;
-            const dados = {
+            var id = $('vendaId').value;
+            var dados = {
                 user_id: OWNER_USER_ID,
                 data: $('data').value,
                 cliente: $('cliente').value,
@@ -237,45 +241,50 @@
                 status: $('status').value
             };
 
-            const { error } = id 
-                ? await supabase.from('vendas').update(dados).eq('id', id)
-                : await supabase.from('vendas').insert([dados]);
+            var res;
+            if (id) {
+                res = await supabase.from('vendas').update(dados).eq('id', id);
+            } else {
+                res = await supabase.from('vendas').insert([dados]);
+            }
 
-            if (error) alert("Erro ao salvar: " + error.message);
-            else { fechar(); await carregarVendas(); }
+            if (res.error) alert("Erro ao salvar: " + res.error.message);
+            else { window.fechar(); await window.carregarVendas(); }
         };
 
-        function abrirImport() { $('importModal').style.display = 'block'; }
-        function fecharImport() { $('importModal').style.display = 'none'; }
+        window.abrirImport = function() { $('importModal').style.display = 'block'; };
+        window.fecharImport = function() { $('importModal').style.display = 'none'; };
         
-        async function processarImport() {
-            const file = $('jsonFile').files[0];
+        window.processarImport = async function() {
+            var file = $('jsonFile').files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
+            var reader = new FileReader();
+            reader.onload = async function(e) {
                 try {
-                    const json = JSON.parse(e.target.result);
-                    const rows = json.map(v => ({
-                        user_id: OWNER_USER_ID,
-                        data: v.data,
-                        cliente: v.cliente,
-                        pedido: v.pedido || '',
-                        valor: Number(v.valor || 0),
-                        custo_estimado: Number(v.custo_estimado || 0),
-                        recebido: Number(v.recebido || 0),
-                        status: v.status || 'Aguardando'
-                    }));
+                    var json = JSON.parse(e.target.result);
+                    var rows = json.map(function(v) {
+                        return {
+                            user_id: OWNER_USER_ID,
+                            data: v.data,
+                            cliente: v.cliente,
+                            pedido: v.pedido || '',
+                            valor: Number(v.valor || 0),
+                            custo_estimado: Number(v.custo_estimado || 0),
+                            recebido: Number(v.recebido || 0),
+                            status: v.status || 'Aguardando'
+                        };
+                    });
                     const { error } = await supabase.from('vendas').insert(rows);
                     if (error) throw error;
                     alert("Importado com sucesso!");
-                    fecharImport();
-                    await carregarVendas();
+                    window.fecharImport();
+                    await window.carregarVendas();
                 } catch (err) { alert("Erro no arquivo"); }
             };
             reader.readAsText(file);
-        }
+        };
 
-        window.onload = init;
+        window.onload = window.init;
     </script>
 </body>
 </html>
