@@ -136,14 +136,15 @@
     <script>
         var $ = function(id) { return document.getElementById(id); };
         var money = function(n) { return Number(n||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); };
-        var supabase = null, vendas = [];
+        var sb = null, vendas = [];
 
         window.init = async function() {
             if (typeof SUPABASE_URL === 'undefined') {
                 alert("Erro: config.js não carregado ou incompleto.");
                 return;
             }
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+            // Usando 'sb' para evitar conflito com o objeto global 'supabase' da biblioteca
+            sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
             console.log("Supabase inicializado");
             await window.carregarVendas();
         };
@@ -152,7 +153,8 @@
             var statusEl = $('syncStatus');
             if (statusEl) statusEl.textContent = 'Sincronizando...';
             
-            const { data, error } = await supabase.from('vendas').select('*').order('data', { ascending: false });
+            if (!sb) return;
+            const { data, error } = await sb.from('vendas').select('*').order('data', { ascending: false });
             
             if (error) {
                 if (statusEl) statusEl.textContent = 'Erro de conexão';
@@ -222,7 +224,7 @@
 
         window.excluir = async function(id) {
             if (!confirm("Excluir esta venda?")) return;
-            const { error } = await supabase.from('vendas').delete().eq('id', id);
+            const { error } = await sb.from('vendas').delete().eq('id', id);
             if (error) alert("Erro ao excluir");
             else await window.carregarVendas();
         };
@@ -243,13 +245,18 @@
 
             var res;
             if (id) {
-                res = await supabase.from('vendas').update(dados).eq('id', id);
+                res = await sb.from('vendas').update(dados).eq('id', id);
             } else {
-                res = await supabase.from('vendas').insert([dados]);
+                res = await sb.from('vendas').insert([dados]);
             }
 
-            if (res.error) alert("Erro ao salvar: " + res.error.message);
-            else { window.fechar(); await window.carregarVendas(); }
+            if (res.error) {
+                console.error("Erro Supabase:", res.error);
+                alert("Erro ao salvar no banco de dados. Verifique se você executou o código SQL no Supabase para liberar o acesso público.");
+            } else { 
+                window.fechar(); 
+                await window.carregarVendas(); 
+            }
         };
 
         window.abrirImport = function() { $('importModal').style.display = 'block'; };
@@ -274,7 +281,7 @@
                             status: v.status || 'Aguardando'
                         };
                     });
-                    const { error } = await supabase.from('vendas').insert(rows);
+                    const { error } = await sb.from('vendas').insert(rows);
                     if (error) throw error;
                     alert("Importado com sucesso!");
                     window.fecharImport();
