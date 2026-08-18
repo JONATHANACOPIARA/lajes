@@ -59,12 +59,37 @@
     .modalbox { background:#fff; max-width:620px; margin:25px auto; border-radius:15px; padding:20px; }
     .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .hidden { display:none !important; }
+    .login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; background:linear-gradient(135deg,#061a35 0%,#123b68 100%); }
+    .login-box { width:min(420px,100%); background:#fff; border-radius:18px; padding:28px; box-shadow:0 18px 60px rgba(0,0,0,.28); }
+    .login-logo { display:block; width:100%; max-height:105px; object-fit:contain; margin:0 auto 18px; }
+    .login-box h1 { color:#061a35; text-align:center; margin:0 0 5px; font-size:23px; }
+    .login-box .login-subtitle { text-align:center; color:#64748b; font-size:13px; margin:0 0 20px; }
+    .login-error { display:none; background:#fee2e2; color:#991b1b; border-radius:8px; padding:10px; font-size:13px; margin-top:12px; }
+    .login-help { color:#64748b; font-size:12px; line-height:1.45; margin-top:16px; text-align:center; }
     .hint { color:var(--muted); font-size:12px; margin:4px 0 12px; }
     @media (max-width:1050px) { .cards { grid-template-columns:repeat(3,1fr); } }
     @media (max-width:750px) { header > div { align-items:flex-start; } .brand img { width:150px; } .brand-text { display:none; } .grid { grid-template-columns:1fr; } .cards { grid-template-columns:repeat(2,1fr); } .row { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-box">
+      <img class="login-logo" src="logo_lajes.png" alt="Lajes Pré-Moldados">
+      <h1>Acesso restrito</h1>
+      <p class="login-subtitle">Entre para acessar vendas, despesas e lucro real.</p>
+      <form id="loginForm" novalidate>
+        <label for="loginEmail">E-mail</label>
+        <input type="email" id="loginEmail" autocomplete="username" required placeholder="seu@email.com">
+        <label for="loginPassword">Senha</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="Sua senha">
+        <button type="submit" class="bluebtn" id="loginButton">ENTRAR</button>
+        <div id="loginError" class="login-error" role="alert"></div>
+      </form>
+      <p class="login-help">Use o mesmo e-mail e senha cadastrados em <strong>Supabase &gt; Authentication &gt; Users</strong>.</p>
+    </div>
+  </section>
+
+  <div id="appShell" class="hidden">
   <header>
     <div>
       <div class="brand">
@@ -73,7 +98,9 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <span class="status" id="configStatus"></span>
+        <span class="status" id="userEmail"></span>
         <button class="graybtn" style="width:auto;margin:0" onclick="window.exportarBackup()">Backup</button>
+        <button class="redbtn" style="width:auto;margin:0" onclick="window.sair()">Sair</button>
       </div>
     </div>
   </header>
@@ -162,6 +189,7 @@
     <input type="file" id="jsonFile" accept=".json">
     <button class="bluebtn" onclick="window.processarImport()">IMPORTAR BACKUP</button><button class="graybtn" onclick="window.fecharModais()">FECHAR</button>
   </div></div>
+  </div>
 
   <script>
     (function() {
@@ -169,7 +197,7 @@
       var $ = function(id) { return document.getElementById(id); };
       var money = function(n) { return Number(n || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); };
       var esc = function(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); };
-      var sb = null, vendas = [], despesas = [], abaAtual = 'vendas';
+      var sb = null, vendas = [], despesas = [], abaAtual = 'vendas', usuarioAtual = null;
 
       function cfg() { return {url:window.SUPABASE_URL, key:window.SUPABASE_PUBLISHABLE_KEY, owner:window.OWNER_USER_ID}; }
       function hoje() { return new Date().toISOString().slice(0,10); }
@@ -188,22 +216,51 @@
       window.init = async function() {
         var c = cfg();
         if (!c.url || !c.key || !window.supabase || !window.supabase.createClient) {
-          $('syncStatus').textContent = 'Configuração indisponível';
-          $('configStatus').textContent = 'Verifique a conexão';
+          $('loginError').textContent = 'A configuração do aplicativo não carregou. Verifique config.js.';
+          $('loginError').style.display = 'block';
           return;
         }
         try {
           sb = window.supabase.createClient(c.url, c.key);
           $('configStatus').textContent = 'Online';
-          await window.carregarTudo();
+          var sessionResult = await sb.auth.getSession();
+          if (sessionResult.error) throw sessionResult.error;
+          await window.aplicarSessao(sessionResult.data.session);
+          sb.auth.onAuthStateChange(function(_event, session) {
+            window.setTimeout(function() { window.aplicarSessao(session); }, 0);
+          });
         } catch (e) {
-          $('syncStatus').textContent = 'Erro de conexão';
-          console.error('Falha ao iniciar o aplicativo:', e);
+          $('loginError').textContent = 'Não foi possível iniciar a autenticação. Recarregue a página.';
+          $('loginError').style.display = 'block';
+          console.error('Falha ao iniciar a autenticação:', e);
         }
       };
 
-      window.carregarTudo = async function() {
+      window.aplicarSessao = async function(session) {
+        usuarioAtual = session && session.user ? session.user : null;
+        if (!usuarioAtual) {
+          $('appShell').classList.add('hidden');
+          $('loginScreen').classList.remove('hidden');
+          $('loginPassword').value = '';
+          $('loginButton').disabled = false;
+          $('loginButton').textContent = 'ENTRAR';
+          return;
+        }
+        $('loginScreen').classList.add('hidden');
+        $('appShell').classList.remove('hidden');
+        $('userEmail').textContent = usuarioAtual.email || '';
+        $('loginError').style.display = 'none';
+        await window.carregarTudo();
+      };
+
+      window.sair = async function() {
         if (!sb) return;
+        var result = await sb.auth.signOut();
+        if (result.error) alert('Não foi possível sair: ' + result.error.message);
+      };
+
+      window.carregarTudo = async function() {
+        if (!sb || !usuarioAtual) return;
         $('syncStatus').textContent = 'Sincronizando...';
         var r = await Promise.all([sb.from('vendas').select('*').order('data',{ascending:false}), sb.from('despesas').select('*').order('data',{ascending:false})]);
         if (r[0].error) { $('syncStatus').textContent = 'Erro em vendas'; console.error(r[0].error); }
@@ -238,11 +295,43 @@
       window.editarDespesa = function(id) { var d=despesas.find(function(x){return Number(x.id)===Number(id);}); if(!d)return; $('tituloDespesa').textContent='Editar Saída de Caixa'; $('despesaId').value=d.id; $('dataDespesa').value=d.data; $('descricaoDespesa').value=d.descricao||''; $('categoriaDespesa').value=d.categoria||'Outros'; $('valorDespesa').value=d.valor||0; $('statusDespesa').value=d.status||'Pago'; $('modalDespesa').style.display='block'; };
       window.excluirDespesa = async function(id) { if(!confirm('Excluir esta saída?'))return; var r=await sb.from('despesas').delete().eq('id',id); if(r.error) alert('Erro ao excluir: '+r.error.message); else await window.carregarTudo(); };
 
-      $('formVenda').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:window.OWNER_USER_ID,data:$('data').value,cliente:$('cliente').value,pedido:$('pedido').value,valor:Number($('valor').value),custo_estimado:Number($('custo').value||0),recebido:Number($('recebido').value||0),status:$('status').value}; var id=$('vendaId').value; var r=id?await sb.from('vendas').update(dados).eq('id',id):await sb.from('vendas').insert([dados]); if(r.error)alert('Erro ao salvar venda: '+r.error.message); else {window.fecharModais();await window.carregarTudo();} });
-      $('formDespesa').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:window.OWNER_USER_ID,data:$('dataDespesa').value,descricao:$('descricaoDespesa').value,categoria:$('categoriaDespesa').value,valor:Number($('valorDespesa').value),status:$('statusDespesa').value}; var id=$('despesaId').value; var r=id?await sb.from('despesas').update(dados).eq('id',id):await sb.from('despesas').insert([dados]); if(r.error)alert('Erro ao salvar saída: '+r.error.message); else {window.fecharModais();await window.carregarTudo();} });
+
+      $('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!sb) return;
+        var email = $('loginEmail').value.trim();
+        var password = $('loginPassword').value;
+        var errorBox = $('loginError');
+        if (!email || !password) {
+          errorBox.textContent = 'Informe o e-mail e a senha.';
+          errorBox.style.display = 'block';
+          return;
+        }
+        $('loginButton').disabled = true;
+        $('loginButton').textContent = 'ENTRANDO...';
+        errorBox.style.display = 'none';
+        var result = await sb.auth.signInWithPassword({email:email, password:password});
+        if (result.error) {
+          var msg = result.error.message || '';
+          if (/email not confirmed/i.test(msg)) {
+            msg = 'Este e-mail ainda não foi confirmado no Supabase. Confirme o usuário em Authentication > Users.';
+          } else if (/invalid login credentials/i.test(msg)) {
+            msg = 'E-mail ou senha incorretos.';
+          } else {
+            msg = 'Não foi possível entrar: ' + msg;
+          }
+          errorBox.textContent = msg;
+          errorBox.style.display = 'block';
+          $('loginButton').disabled = false;
+          $('loginButton').textContent = 'ENTRAR';
+        }
+      });
+
+      $('formVenda').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('data').value,cliente:$('cliente').value,pedido:$('pedido').value,valor:Number($('valor').value),custo_estimado:Number($('custo').value||0),recebido:Number($('recebido').value||0),status:$('status').value}; var id=$('vendaId').value; var r=id?await sb.from('vendas').update(dados).eq('id',id):await sb.from('vendas').insert([dados]); if(r.error)alert('Erro ao salvar venda: '+r.error.message); else {window.fecharModais();await window.carregarTudo();} });
+      $('formDespesa').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('dataDespesa').value,descricao:$('descricaoDespesa').value,categoria:$('categoriaDespesa').value,valor:Number($('valorDespesa').value),status:$('statusDespesa').value}; var id=$('despesaId').value; var r=id?await sb.from('despesas').update(dados).eq('id',id):await sb.from('despesas').insert([dados]); if(r.error)alert('Erro ao salvar saída: '+r.error.message); else {window.fecharModais();await window.carregarTudo();} });
 
       window.exportarBackup = function() { var blob=new Blob([JSON.stringify({exportado_em:new Date().toISOString(),vendas:vendas,despesas:despesas},null,2)],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='backup-lajes-'+hoje()+'.json'; a.click(); URL.revokeObjectURL(a.href); };
-      window.processarImport = function() { var file=$('jsonFile').files[0]; if(!file)return alert('Escolha um arquivo JSON.'); var rd=new FileReader(); rd.onload=async function(e){try{var j=JSON.parse(e.target.result), vs=Array.isArray(j)?j:(j.vendas||[]), ds=Array.isArray(j.despesas)?j.despesas:[]; if(vs.length)await sb.from('vendas').insert(vs.map(function(v){var x=Object.assign({},v);delete x.id;delete x.created_at;x.user_id=window.OWNER_USER_ID;return x;})); if(ds.length)await sb.from('despesas').insert(ds.map(function(d){var x=Object.assign({},d);delete x.id;delete x.created_at;x.user_id=window.OWNER_USER_ID;return x;})); alert('Backup importado.'); window.fecharModais(); await window.carregarTudo();}catch(err){alert('Arquivo de backup inválido.');}}; rd.readAsText(file); };
+      window.processarImport = function() { var file=$('jsonFile').files[0]; if(!file)return alert('Escolha um arquivo JSON.'); var rd=new FileReader(); rd.onload=async function(e){try{var j=JSON.parse(e.target.result), vs=Array.isArray(j)?j:(j.vendas||[]), ds=Array.isArray(j.despesas)?j.despesas:[]; if(vs.length)await sb.from('vendas').insert(vs.map(function(v){var x=Object.assign({},v);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); if(ds.length)await sb.from('despesas').insert(ds.map(function(d){var x=Object.assign({},d);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); alert('Backup importado.'); window.fecharModais(); await window.carregarTudo();}catch(err){alert('Arquivo de backup inválido.');}}; rd.readAsText(file); };
       $('filtroPeriodo').addEventListener('change',function(){window.renderVendas();window.renderDespesas();window.renderResumo();});
       window.addEventListener('click',function(e){if(e.target.classList.contains('modal'))window.fecharModais();});
       window.addEventListener('load',window.init);
