@@ -46,7 +46,7 @@
     input,select { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-top:5px; background:#fff; }
     button { width:100%; border:0; border-radius:8px; padding:10px; margin-top:9px; color:#fff; background:var(--navy); font-weight:bold; cursor:pointer; }
     button:hover { filter:brightness(1.08); }
-    .greenbtn { background:var(--green); } .bluebtn { background:var(--blue); } .graybtn { background:#64748b; } .redbtn { background:var(--red); }
+    .greenbtn { background:var(--green); } .bluebtn { background:var(--blue); } .graybtn { background:#64748b; } .redbtn { background:var(--red); } .pdfbtn { background:var(--purple); }
     .smallbtn { width:auto; padding:6px 9px; margin:0 4px 0 0; font-size:12px; }
     .actions { display:flex; gap:8px; margin-top:10px; } .actions button { flex:1; }
     .tablewrap { overflow-x:auto; }
@@ -316,7 +316,7 @@
       };
 
       window.renderVendas = function() {
-        var list=vendas.filter(filtro), html=list.map(function(v) { var total=Number(v.valor||0)+Number(v.frete||0), lucro=total-Number(v.custo_estimado||0); return '<tr><td>'+esc(new Date(v.data+'T12:00').toLocaleDateString('pt-BR'))+'</td><td><strong>'+esc(v.cliente)+'</strong><br><small>'+esc(v.pedido||'')+'</small></td><td>'+money(total)+'</td><td class="'+(lucro>=0?'green':'red')+'">'+money(lucro)+'</td><td>'+esc(v.status||'')+'</td><td><button class="smallbtn bluebtn" onclick="window.editarVenda('+Number(v.id)+')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirVenda('+Number(v.id)+')">Excluir</button></td></tr>'; }).join('');
+        var list=vendas.filter(filtro), html=list.map(function(v) { var total=Number(v.valor||0)+Number(v.frete||0), lucro=total-Number(v.custo_estimado||0); return '<tr><td>'+esc(new Date(v.data+'T12:00').toLocaleDateString('pt-BR'))+'</td><td><strong>'+esc(v.cliente)+'</strong><br><small>'+esc(v.pedido||'')+'</small></td><td>'+money(total)+'</td><td class="'+(lucro>=0?'green':'red')+'">'+money(lucro)+'</td><td>'+esc(v.status||'')+'</td><td><button class="smallbtn pdfbtn" onclick="window.gerarOrcamento('+Number(v.id)+')">PDF</button><button class="smallbtn bluebtn" onclick="window.editarVenda('+Number(v.id)+')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirVenda('+Number(v.id)+')">Excluir</button></td></tr>'; }).join('');
         $('listaVendas').innerHTML=html || '<tr><td colspan="6" class="empty">Nenhuma venda no período selecionado.</td></tr>';
       };
 
@@ -326,6 +326,26 @@
       };
 
       window.novo = function() { $('tituloVenda').textContent='Nova Venda'; $('formVenda').reset(); $('vendaId').value=''; $('data').value=hoje(); $('modalVenda').style.display='block'; };
+      window.gerarOrcamento = function(id) {
+        var v = vendas.find(function(x) { return Number(x.id) === Number(id); });
+        if (!v) return alert('Venda não encontrada.');
+        var total = Number(v.valor || 0) + Number(v.frete || 0);
+        var data = v.data ? new Date(v.data + 'T12:00').toLocaleDateString('pt-BR') : '';
+        var logo = new URL('logo_lajes.png', window.location.href).href;
+        var numero = String(v.id || '').padStart(5, '0');
+        var cliente = esc(v.cliente || '');
+        var pedido = esc(v.pedido || 'Não informado');
+        var status = esc(v.status || 'Aguardando');
+        var documento = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento ' + numero + ' - Lajes Pré-Moldados</title><style>' +
+          '@page{size:A4;margin:16mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#172033;margin:0;font-size:13px}header{border-bottom:5px solid #061a35;padding-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:20px}header img{width:265px;max-height:85px;object-fit:contain;object-position:left center}.company{text-align:right;color:#64748b;font-size:11px;line-height:1.55}.company strong{display:block;color:#061a35;font-size:14px}.title{display:flex;justify-content:space-between;align-items:end;margin:30px 0 20px}.title h1{font-size:25px;margin:0;color:#061a35;letter-spacing:.4px}.number{text-align:right;color:#64748b}.number strong{display:block;color:#061a35;font-size:15px}.client{border:1px solid #dbe3ed;border-radius:8px;padding:13px;margin-bottom:22px;background:#f8fbff}.client h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:0 0 7px}.client p{margin:3px 0;font-size:14px}.client b{color:#061a35}.items{width:100%;border-collapse:collapse;margin-top:10px}.items th{background:#061a35;color:white;text-align:left;padding:10px}.items td{padding:12px 10px;border-bottom:1px solid #e2e8f0}.items th:last-child,.items td:last-child{text-align:right}.totals{margin:24px 0 0 auto;width:310px}.totals p{display:flex;justify-content:space-between;margin:7px 0}.totals .grand{border-top:2px solid #061a35;padding-top:10px;font-size:18px;font-weight:bold;color:#061a35}.notes{margin-top:45px;border-top:1px solid #dbe3ed;padding-top:16px;color:#64748b;font-size:11px;line-height:1.55}.signature{margin-top:58px;display:grid;grid-template-columns:1fr 1fr;gap:70px;text-align:center;color:#64748b;font-size:11px}.signature div{border-top:1px solid #64748b;padding-top:7px}@media print{.no-print{display:none!important}}' +
+          '</style></head><body onload="setTimeout(function(){window.print()},400)"><header><img src="' + logo + '" alt="Lajes Pré-Moldados"><div class="company"><strong>LAJES PRÉ-MOLDADOS</strong>Orçamento comercial<br>Documento gerado em ' + new Date().toLocaleDateString('pt-BR') + '</div></header><section class="title"><h1>ORÇAMENTO</h1><div class="number">Nº <strong>' + numero + '</strong><br>Data: ' + data + '</div></section><section class="client"><h2>Dados do cliente</h2><p><b>Cliente:</b> ' + cliente + '</p><p><b>Pedido:</b> ' + pedido + '</p></section><table class="items"><thead><tr><th>Descrição</th><th>Quantidade / observação</th><th>Valor</th></tr></thead><tbody><tr><td>Fornecimento de lajes pré-moldadas</td><td>' + pedido + '</td><td>' + money(total) + '</td></tr></tbody></table><div class="totals"><p><span>Subtotal</span><span>' + money(total) + '</span></p><p><span>Status</span><span>' + status + '</span></p><p class="grand"><span>Total do orçamento</span><span>' + money(total) + '</span></p></div><div class="notes"><b>Observações:</b> Este orçamento é uma estimativa comercial. Valores, medidas, prazo de produção e entrega devem ser confirmados com a empresa antes da contratação. Validade sugerida: 7 dias.</div><div class="signature"><div>Responsável pela empresa</div><div>Cliente</div></div></body></html>';
+        var janela = window.open('', '_blank', 'width=900,height=700');
+        if (!janela) return alert('O navegador bloqueou a janela do PDF. Permita pop-ups para este site e tente novamente.');
+        janela.document.open();
+        janela.document.write(documento);
+        janela.document.close();
+      };
+
       window.editarVenda = function(id) { var v=vendas.find(function(x){return Number(x.id)===Number(id);}); if(!v)return; $('tituloVenda').textContent='Editar Venda'; $('vendaId').value=v.id; $('data').value=v.data; $('cliente').value=v.cliente||''; $('pedido').value=v.pedido||''; $('valor').value=v.valor||0; $('custo').value=v.custo_estimado||0; $('recebido').value=v.recebido||0; $('status').value=v.status||'Aguardando'; $('modalVenda').style.display='block'; };
       window.excluirVenda = async function(id) { if(!confirm('Excluir esta venda?'))return; var r=await sb.from('vendas').delete().eq('id',id); if(r.error) alert('Erro ao excluir: '+r.error.message); else { await window.carregarTudo(); mostrarToast('Venda excluída.','info'); } };
       window.novaDespesa = function() { $('tituloDespesa').textContent='Nova Saída de Caixa'; $('formDespesa').reset(); $('despesaId').value=''; $('dataDespesa').value=hoje(); $('statusDespesa').value='Pago'; $('modalDespesa').style.display='block'; };
