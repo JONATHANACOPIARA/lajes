@@ -7,6 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>Lajes Pré-Moldados - Gestão</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="config.js?v=login-20260818" onerror="console.warn('config.js externo não carregado; usando configuração interna');"></script>
   <script>
     // Fallback: o app continua funcionando se o arquivo externo estiver atrasado ou indisponível.
@@ -83,6 +84,16 @@
     .toast.show { opacity:1; transform:translateY(0); }
     .toast.success { background:#15803d; } .toast.error { background:#b91c1c; } .toast.info { background:#1d4ed8; }
     .tablewrap table tbody tr:hover { background:#f8fbff; }
+    .dashboard-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:18px; }
+    .chart-panel { min-height:330px; }
+    .chart-panel canvas { width:100% !important; height:260px !important; max-height:285px; }
+    .dashboard-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+    .dashboard-metric { background:linear-gradient(135deg,#061a35,#174a78); color:#fff; border-radius:14px; padding:15px; }
+    .dashboard-metric small { color:#cbd5e1; display:block; }
+    .dashboard-metric strong { display:block; margin-top:7px; font-size:18px; }
+    .chart-note { color:var(--muted); font-size:12px; margin:0 0 12px; }
+    .wa-btn { background:#16a34a; }
+    @media (max-width:750px) { .dashboard-grid { grid-template-columns:1fr; } .dashboard-metrics { grid-template-columns:1fr; } }
     .hint { color:var(--muted); font-size:12px; margin:4px 0 12px; }
     @media (max-width:1050px) { .cards { grid-template-columns:repeat(3,1fr); } }
     @media (max-width:750px) { header > div { align-items:flex-start; } .brand img { width:150px; } .brand-text { display:none; } .grid { grid-template-columns:1fr; } .cards { grid-template-columns:repeat(2,1fr); } .row { grid-template-columns:1fr; } }
@@ -147,6 +158,7 @@
     <nav class="tabs" aria-label="Módulos">
       <button id="tabVendas" class="tab active" onclick="window.abrirAba('vendas')">Vendas</button>
       <button id="tabDespesas" class="tab" onclick="window.abrirAba('despesas')">Saída de Caixa</button>
+      <button id="tabDashboard" class="tab" onclick="window.abrirAba('dashboard')">Dashboard</button>
     </nav>
 
     <section id="abaVendas">
@@ -180,6 +192,19 @@
         </div>
       </div>
     </section>
+
+    <section id="abaDashboard" class="hidden">
+      <div class="dashboard-metrics">
+        <div class="dashboard-metric"><small>Lucro real no período</small><strong id="dashboardLucroReal">R$ 0,00</strong></div>
+        <div class="dashboard-metric"><small>Melhor mês dos últimos 6</small><strong id="dashboardMelhorMes">Ainda sem dados</strong></div>
+        <div class="dashboard-metric"><small>Maior venda registrada</small><strong id="dashboardMaiorVenda">R$ 0,00</strong></div>
+      </div>
+      <div id="dashboardAviso" class="hint"></div>
+      <div class="dashboard-grid">
+        <div class="panel chart-panel"><h3>Vendas, despesas e lucro real</h3><p class="chart-note">Comparativo mensal dos últimos seis meses.</p><canvas id="graficoEvolucao"></canvas></div>
+        <div class="panel chart-panel"><h3>Despesas por categoria</h3><p class="chart-note">Distribuição das saídas pagas no período selecionado.</p><canvas id="graficoDespesas"></canvas></div>
+      </div>
+    </section>
   </main>
 
   <div id="modalVenda" class="modal"><div class="modalbox">
@@ -187,6 +212,7 @@
     <form id="formVenda">
       <input type="hidden" id="vendaId">
       <div class="row"><div><label>Data</label><input type="date" id="data" required></div><div><label>Cliente</label><input type="text" id="cliente" required></div></div>
+      <label>WhatsApp do cliente</label><input type="tel" id="telefone" placeholder="(99) 99999-9999">
       <label>Pedido</label><input type="text" id="pedido" placeholder="Ex.: 20 lajes">
       <div class="row"><div><label>Valor da venda (R$)</label><input type="number" step="0.01" min="0" id="valor" required></div><div><label>Custo estimado (R$)</label><input type="number" step="0.01" min="0" id="custo" value="0"></div></div>
       <div class="row"><div><label>Recebido (R$)</label><input type="number" step="0.01" min="0" id="recebido" value="0"></div><div><label>Status</label><select id="status"><option>Aguardando</option><option>Produção</option><option>Entregue</option></select></div></div>
@@ -220,7 +246,7 @@
       var $ = function(id) { return document.getElementById(id); };
       var money = function(n) { return Number(n || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); };
       var esc = function(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); };
-      var sb = null, vendas = [], despesas = [], abaAtual = 'vendas', usuarioAtual = null;
+      var sb = null, vendas = [], despesas = [], abaAtual = 'vendas', usuarioAtual = null, chartEvolucao = null, chartDespesas = null;
 
       function cfg() { return {url:window.SUPABASE_URL, key:window.SUPABASE_PUBLISHABLE_KEY, owner:window.OWNER_USER_ID}; }
       function hoje() { return new Date().toISOString().slice(0,10); }
@@ -228,7 +254,7 @@
         var p = $('filtroPeriodo').value;
         var q = $('filtroBusca').value.trim().toLowerCase();
         var st = $('filtroStatus').value;
-        var texto = [v.cliente, v.pedido, v.descricao, v.categoria].filter(Boolean).join(' ').toLowerCase();
+        var texto = [v.cliente, v.pedido, v.telefone, v.descricao, v.categoria].filter(Boolean).join(' ').toLowerCase();
         return (!p || String(v.data || '').startsWith(p)) && (!q || texto.includes(q)) && (!st || String(v.status || '') === st);
       }
       function mostrarToast(message, type) {
@@ -245,8 +271,11 @@
         abaAtual = aba;
         $('abaVendas').classList.toggle('hidden', aba !== 'vendas');
         $('abaDespesas').classList.toggle('hidden', aba !== 'despesas');
+        $('abaDashboard').classList.toggle('hidden', aba !== 'dashboard');
         $('tabVendas').classList.toggle('active', aba === 'vendas');
         $('tabDespesas').classList.toggle('active', aba === 'despesas');
+        $('tabDashboard').classList.toggle('active', aba === 'dashboard');
+        if (aba === 'dashboard') window.renderDashboard();
       };
       window.fecharModais = function() { $('modalVenda').style.display='none'; $('modalDespesa').style.display='none'; $('modalBackup').style.display='none'; };
 
@@ -305,19 +334,49 @@
         if (r[1].error) { $('syncStatus').textContent = 'Crie a tabela despesas'; console.error(r[1].error); despesas = []; }
         else despesas = r[1].data || [];
         $('syncStatus').textContent = r[0].error ? 'Erro de conexão' : (r[1].error ? 'Vendas online; despesas pendentes' : 'Sincronizado');
-        window.renderVendas(); window.renderDespesas(); window.renderResumo();
+        window.renderVendas(); window.renderDespesas(); window.renderResumo(); window.renderDashboard();
       };
 
       window.renderResumo = function() {
         var vs = vendas.filter(filtro), ds = despesas.filter(filtro), venda=0, rec=0, bruto=0, pagas=0;
         vs.forEach(function(v) { var total=Number(v.valor||0)+Number(v.frete||0); venda+=total; rec+=Number(v.recebido||0); bruto+=total-Number(v.custo_estimado||0); });
         ds.forEach(function(d) { if (String(d.status||'Pago') === 'Pago') pagas+=Number(d.valor||0); });
-        $('tot').textContent=money(venda); $('rec').textContent=money(rec); $('arec').textContent=money(venda-rec); $('lucroBruto').textContent=money(bruto); $('despesasPagas').textContent=money(pagas); $('lucroReal').textContent=money(bruto-pagas);
+        $('tot').textContent=money(venda); $('rec').textContent=money(rec); $('arec').textContent=money(venda-rec); $('lucroBruto').textContent=money(bruto); $('despesasPagas').textContent=money(pagas); $('lucroReal').textContent=money(bruto-pagas); $('dashboardLucroReal').textContent=money(bruto-pagas);
       };
 
       window.renderVendas = function() {
-        var list=vendas.filter(filtro), html=list.map(function(v) { var total=Number(v.valor||0)+Number(v.frete||0), lucro=total-Number(v.custo_estimado||0); return '<tr><td>'+esc(new Date(v.data+'T12:00').toLocaleDateString('pt-BR'))+'</td><td><strong>'+esc(v.cliente)+'</strong><br><small>'+esc(v.pedido||'')+'</small></td><td>'+money(total)+'</td><td class="'+(lucro>=0?'green':'red')+'">'+money(lucro)+'</td><td>'+esc(v.status||'')+'</td><td><button class="smallbtn pdfbtn" onclick="window.gerarOrcamento('+Number(v.id)+')">PDF</button><button class="smallbtn bluebtn" onclick="window.editarVenda('+Number(v.id)+')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirVenda('+Number(v.id)+')">Excluir</button></td></tr>'; }).join('');
+        var list=vendas.filter(filtro), html=list.map(function(v) { var total=Number(v.valor||0)+Number(v.frete||0), lucro=total-Number(v.custo_estimado||0); return '<tr><td>'+esc(new Date(v.data+'T12:00').toLocaleDateString('pt-BR'))+'</td><td><strong>'+esc(v.cliente)+'</strong><br><small>'+esc(v.pedido||'')+'</small></td><td>'+money(total)+'</td><td class="'+(lucro>=0?'green':'red')+'">'+money(lucro)+'</td><td>'+esc(v.status||'')+'</td><td><button class="smallbtn pdfbtn" onclick="window.gerarOrcamento('+Number(v.id)+')">PDF</button><button class="smallbtn wa-btn" onclick="window.abrirWhatsApp('+Number(v.id)+')">WhatsApp</button><button class="smallbtn bluebtn" onclick="window.editarVenda('+Number(v.id)+')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirVenda('+Number(v.id)+')">Excluir</button></td></tr>'; }).join('');
         $('listaVendas').innerHTML=html || '<tr><td colspan="6" class="empty">Nenhuma venda no período selecionado.</td></tr>';
+      };
+
+      window.renderDashboard = function() {
+        var aviso = $('dashboardAviso');
+        if (typeof Chart === 'undefined') {
+          aviso.textContent = 'Os gráficos não carregaram. Verifique a internet e recarregue a página; vendas e despesas continuam funcionando normalmente.';
+          return;
+        }
+        aviso.textContent = '';
+        var fim = new Date();
+        var periodo = $('filtroPeriodo').value;
+        if (periodo) fim = new Date(periodo + '-01T12:00:00');
+        fim.setDate(1);
+        var meses = [];
+        for (var i = 5; i >= 0; i--) { var d = new Date(fim.getFullYear(), fim.getMonth() - i, 1); meses.push({key:d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label:d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})}); }
+        var vm = {}, dm = {}, lm = {}, maior = 0;
+        meses.forEach(function(m) { vm[m.key]=0; dm[m.key]=0; lm[m.key]=0; });
+        vendas.forEach(function(v) { var key=String(v.data||'').slice(0,7); if (vm[key] !== undefined) { var total=Number(v.valor||0)+Number(v.frete||0); vm[key]+=total; lm[key]+=total-Number(v.custo_estimado||0); } if (Number(v.valor||0)+Number(v.frete||0)>maior) maior=Number(v.valor||0)+Number(v.frete||0); });
+        despesas.forEach(function(d) { var key=String(d.data||'').slice(0,7); if (dm[key] !== undefined && String(d.status||'Pago') === 'Pago') dm[key]+=Number(d.valor||0); });
+        var lucros = meses.map(function(m) { return lm[m.key] - dm[m.key]; });
+        var melhor = lucros.indexOf(Math.max.apply(null,lucros));
+        $('dashboardMelhorMes').textContent = melhor >= 0 ? meses[melhor].label + ' (' + money(lucros[melhor]) + ')' : 'Ainda sem dados';
+        $('dashboardMaiorVenda').textContent = money(maior);
+        if (chartEvolucao) chartEvolucao.destroy();
+        chartEvolucao = new Chart($('graficoEvolucao'), {type:'bar', data:{labels:meses.map(function(m){return m.label;}), datasets:[{label:'Vendas',data:meses.map(function(m){return vm[m.key];}),backgroundColor:'#2563eb',borderRadius:5},{label:'Despesas pagas',data:meses.map(function(m){return dm[m.key];}),backgroundColor:'#ef4444',borderRadius:5},{label:'Lucro real',data:lucros,backgroundColor:'#16a34a',borderRadius:5}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,ticks:{callback:function(value){return money(value);}}}}}});
+        var porCategoria = {};
+        despesas.filter(filtro).forEach(function(d) { if (String(d.status||'Pago') === 'Pago') porCategoria[d.categoria||'Outros']=(porCategoria[d.categoria||'Outros']||0)+Number(d.valor||0); });
+        var categorias=Object.keys(porCategoria), cores=['#2563eb','#16a34a','#f97316','#7e22ce','#e11d48','#0891b2','#ca8a04','#475569'];
+        if (chartDespesas) chartDespesas.destroy();
+        chartDespesas = new Chart($('graficoDespesas'), {type:'doughnut', data:{labels:categorias.length ? categorias : ['Sem despesas pagas'], datasets:[{data:categorias.length ? categorias.map(function(c){return porCategoria[c];}) : [1],backgroundColor:categorias.length ? categorias.map(function(_,i){return cores[i%cores.length];}) : ['#cbd5e1'],borderWidth:2,borderColor:'#fff'}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+money(ctx.raw);}}}}}});
       };
 
       window.renderDespesas = function() {
@@ -346,11 +405,29 @@
         janela.document.close();
       };
 
-      window.editarVenda = function(id) { var v=vendas.find(function(x){return Number(x.id)===Number(id);}); if(!v)return; $('tituloVenda').textContent='Editar Venda'; $('vendaId').value=v.id; $('data').value=v.data; $('cliente').value=v.cliente||''; $('pedido').value=v.pedido||''; $('valor').value=v.valor||0; $('custo').value=v.custo_estimado||0; $('recebido').value=v.recebido||0; $('status').value=v.status||'Aguardando'; $('modalVenda').style.display='block'; };
+      window.editarVenda = function(id) { var v=vendas.find(function(x){return Number(x.id)===Number(id);}); if(!v)return; $('tituloVenda').textContent='Editar Venda'; $('vendaId').value=v.id; $('data').value=v.data; $('cliente').value=v.cliente||''; $('telefone').value=v.telefone||''; $('pedido').value=v.pedido||''; $('valor').value=v.valor||0; $('custo').value=v.custo_estimado||0; $('recebido').value=v.recebido||0; $('status').value=v.status||'Aguardando'; $('modalVenda').style.display='block'; };
       window.excluirVenda = async function(id) { if(!confirm('Excluir esta venda?'))return; var r=await sb.from('vendas').delete().eq('id',id); if(r.error) alert('Erro ao excluir: '+r.error.message); else { await window.carregarTudo(); mostrarToast('Venda excluída.','info'); } };
       window.novaDespesa = function() { $('tituloDespesa').textContent='Nova Saída de Caixa'; $('formDespesa').reset(); $('despesaId').value=''; $('dataDespesa').value=hoje(); $('statusDespesa').value='Pago'; $('modalDespesa').style.display='block'; };
       window.editarDespesa = function(id) { var d=despesas.find(function(x){return Number(x.id)===Number(id);}); if(!d)return; $('tituloDespesa').textContent='Editar Saída de Caixa'; $('despesaId').value=d.id; $('dataDespesa').value=d.data; $('descricaoDespesa').value=d.descricao||''; $('categoriaDespesa').value=d.categoria||'Outros'; $('valorDespesa').value=d.valor||0; $('statusDespesa').value=d.status||'Pago'; $('modalDespesa').style.display='block'; };
       window.excluirDespesa = async function(id) { if(!confirm('Excluir esta saída?'))return; var r=await sb.from('despesas').delete().eq('id',id); if(r.error) alert('Erro ao excluir: '+r.error.message); else { await window.carregarTudo(); mostrarToast('Saída excluída.','info'); } };
+
+      window.abrirWhatsApp = function(id) {
+        var v = vendas.find(function(x) { return Number(x.id) === Number(id); });
+        if (!v) return;
+        var telefone = String(v.telefone || '').replace(/\D/g, '');
+        if (!telefone) {
+          telefone = prompt('Informe o WhatsApp do cliente com DDD (ex.: 62999998888):', '');
+          if (!telefone) return;
+          telefone = String(telefone).replace(/\D/g, '');
+        }
+        if (telefone.length === 10 || telefone.length === 11) telefone = '55' + telefone;
+        if (telefone.length < 12) return alert('Informe um número válido com DDD.');
+        var nome = v.cliente || 'cliente';
+        var pedido = v.pedido || 'seu pedido';
+        var status = v.status || 'em andamento';
+        var texto = 'Olá, ' + nome + '! Aqui é da Lajes Pré-Moldados. Seu pedido (' + pedido + ') está com status: ' + status + '. Qualquer dúvida, estamos à disposição.';
+        window.open('https://wa.me/' + telefone + '?text=' + encodeURIComponent(texto), '_blank');
+      };
 
 
       $('loginForm').addEventListener('submit', async function(e) {
@@ -384,14 +461,14 @@
         }
       });
 
-      $('formVenda').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('data').value,cliente:$('cliente').value,pedido:$('pedido').value,valor:Number($('valor').value),custo_estimado:Number($('custo').value||0),recebido:Number($('recebido').value||0),status:$('status').value}; var id=$('vendaId').value; var r=id?await sb.from('vendas').update(dados).eq('id',id):await sb.from('vendas').insert([dados]); if(r.error){alert('Erro ao salvar venda: '+r.error.message);} else {window.fecharModais();await window.carregarTudo();mostrarToast(id ? 'Venda atualizada com sucesso.' : 'Venda salva com sucesso.','success');} });
+      $('formVenda').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('data').value,cliente:$('cliente').value,telefone:$('telefone').value,pedido:$('pedido').value,valor:Number($('valor').value),custo_estimado:Number($('custo').value||0),recebido:Number($('recebido').value||0),status:$('status').value}; var id=$('vendaId').value; var r=id?await sb.from('vendas').update(dados).eq('id',id):await sb.from('vendas').insert([dados]); if(r.error){alert('Erro ao salvar venda: '+r.error.message);} else {window.fecharModais();await window.carregarTudo();mostrarToast(id ? 'Venda atualizada com sucesso.' : 'Venda salva com sucesso.','success');} });
       $('formDespesa').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('dataDespesa').value,descricao:$('descricaoDespesa').value,categoria:$('categoriaDespesa').value,valor:Number($('valorDespesa').value),status:$('statusDespesa').value}; var id=$('despesaId').value; var r=id?await sb.from('despesas').update(dados).eq('id',id):await sb.from('despesas').insert([dados]); if(r.error){alert('Erro ao salvar saída: '+r.error.message);} else {window.fecharModais();await window.carregarTudo();mostrarToast(id ? 'Saída atualizada com sucesso.' : 'Saída salva com sucesso.','success');} });
 
       window.exportarBackup = function() { var blob=new Blob([JSON.stringify({exportado_em:new Date().toISOString(),vendas:vendas,despesas:despesas},null,2)],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='backup-lajes-'+hoje()+'.json'; a.click(); URL.revokeObjectURL(a.href); };
       window.processarImport = function() { var file=$('jsonFile').files[0]; if(!file)return alert('Escolha um arquivo JSON.'); var rd=new FileReader(); rd.onload=async function(e){try{var j=JSON.parse(e.target.result), vs=Array.isArray(j)?j:(j.vendas||[]), ds=Array.isArray(j.despesas)?j.despesas:[]; if(vs.length)await sb.from('vendas').insert(vs.map(function(v){var x=Object.assign({},v);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); if(ds.length)await sb.from('despesas').insert(ds.map(function(d){var x=Object.assign({},d);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); mostrarToast('Backup importado com sucesso.','success'); window.fecharModais(); await window.carregarTudo();}catch(err){alert('Arquivo de backup inválido.');}}; rd.readAsText(file); };
       $('filtroPeriodo').addEventListener('change',function(){window.renderVendas();window.renderDespesas();window.renderResumo();});
       $('filtroBusca').addEventListener('input',function(){window.renderVendas();window.renderDespesas();window.renderResumo();});
-      $('filtroStatus').addEventListener('change',function(){window.renderVendas();window.renderDespesas();window.renderResumo();});
+      $('filtroStatus').addEventListener('change',function(){window.renderVendas();window.renderDespesas();window.renderResumo();window.renderDashboard();});
       window.addEventListener('click',function(e){if(e.target.classList.contains('modal'))window.fecharModais();});
       window.addEventListener('load',window.init);
     })();
