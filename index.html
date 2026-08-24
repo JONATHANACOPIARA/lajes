@@ -1,565 +1,128 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#061a35">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <title>Lajes Pré-Moldados - Gestão</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="config.js?v=login-20260818" onerror="console.warn('config.js externo não carregado; usando configuração interna');"></script>
-  <script>
-    // Fallback: o app continua funcionando se o arquivo externo estiver atrasado ou indisponível.
-    window.SUPABASE_URL = window.SUPABASE_URL || 'https://dhpoxcaytryoutufgvoo.supabase.co';
-    window.SUPABASE_PUBLISHABLE_KEY = window.SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRocG94Y2F5dHJ5b3V0dWZndm9vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MDI2NjQsImV4cCI6MjEwMjE3ODY2NH0.KL7XEvQtMENa49iwXKp88YhudRhVQFsYUfS5fRn-v9M';
-    window.OWNER_USER_ID = window.OWNER_USER_ID || 'c4789d70-3aa3-47ed-bf7e-a9748bf65973';
-  </script>
-  <style>
-    * { box-sizing: border-box; }
-    :root { --navy:#061a35; --blue:#1d4ed8; --green:#15803d; --red:#b91c1c; --purple:#7e22ce; --muted:#64748b; }
-    body { margin:0; background:#f1f5f9; color:#172033; font-family:Arial,Helvetica,sans-serif; }
-    button,input,select { font:inherit; }
-    header { background:var(--navy); color:#fff; padding:12px 18px; }
-    header > div { max-width:1220px; margin:auto; display:flex; justify-content:space-between; align-items:center; gap:16px; }
-    .brand { display:flex; align-items:center; gap:13px; min-width:0; }
-    .brand img { width:190px; height:61px; object-fit:contain; }
-    .brand-text { border-left:1px solid #64748b; padding-left:10px; white-space:nowrap; }
-    .brand-text strong { font-size:15px; }
-    .brand-text small { color:#cbd5e1; }
-    .wrap { max-width:1220px; margin:auto; padding:16px; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
-    .periodo { background:#fff; border-radius:10px; padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,.08); }
-    .periodo label { font-size:12px; color:var(--muted); margin-right:8px; }
-    .periodo input { width:150px; border:1px solid #cbd5e1; border-radius:7px; padding:7px; }
-    .status { font-size:12px; color:#cbd5e1; }
-    .cards { display:grid; grid-template-columns:repeat(6,minmax(140px,1fr)); gap:10px; margin-bottom:16px; }
-    .card,.panel { background:#fff; border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.09); padding:14px; }
-    .card small { color:var(--muted); }
-    .val { font-size:19px; font-weight:bold; margin-top:7px; }
-    .blue { color:var(--blue); } .green { color:var(--green); } .red { color:var(--red); } .purple { color:var(--purple); }
-    .tabs { display:flex; gap:8px; margin-bottom:12px; }
-    .tab { width:auto; margin:0; background:#cbd5e1; color:#172033; padding:10px 18px; }
-    .tab.active { background:var(--navy); color:#fff; }
-    .grid { display:grid; grid-template-columns:280px 1fr; gap:18px; }
-    h2,h3 { margin-top:0; }
-    label { display:block; font-size:13px; color:#475569; margin-top:10px; }
-    input,select { width:100%; border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-top:5px; background:#fff; }
-    button { width:100%; border:0; border-radius:8px; padding:10px; margin-top:9px; color:#fff; background:var(--navy); font-weight:bold; cursor:pointer; }
-    button:hover { filter:brightness(1.08); }
-    .greenbtn { background:var(--green); } .bluebtn { background:var(--blue); } .graybtn { background:#64748b; } .redbtn { background:var(--red); } .pdfbtn { background:var(--purple); }
-    .smallbtn { width:auto; padding:6px 9px; margin:0 4px 0 0; font-size:12px; }
-    .actions { display:flex; gap:8px; margin-top:10px; } .actions button { flex:1; }
-    .tablewrap { overflow-x:auto; }
-    table { width:100%; border-collapse:collapse; min-width:760px; }
-    th,td { text-align:left; padding:10px 8px; border-bottom:1px solid #e5e7eb; font-size:13px; vertical-align:top; }
-    th { color:var(--muted); font-size:11px; text-transform:uppercase; }
-    .badge { display:inline-block; padding:4px 8px; border-radius:20px; font-size:10px; font-weight:bold; }
-    .pago { background:#dcfce7; color:#166534; } .pendente { background:#fef3c7; color:#92400e; } .agendado { background:#dbeafe; color:#1e40af; }
-    .empty { text-align:center; color:var(--muted); padding:28px; }
-    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.62); z-index:100; padding:20px; overflow:auto; }
-    .modalbox { background:#fff; max-width:620px; margin:25px auto; border-radius:15px; padding:20px; }
-    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .hidden { display:none !important; }
-    .login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; background:linear-gradient(135deg,#061a35 0%,#123b68 100%); }
-    .login-box { width:min(420px,100%); background:#fff; border-radius:18px; padding:28px; box-shadow:0 18px 60px rgba(0,0,0,.28); }
-    .login-logo { display:block; width:100%; max-height:105px; object-fit:contain; margin:0 auto 18px; }
-    .login-box h1 { color:#061a35; text-align:center; margin:0 0 5px; font-size:23px; }
-    .login-box .login-subtitle { text-align:center; color:#64748b; font-size:13px; margin:0 0 20px; }
-    .login-error { display:none; background:#fee2e2; color:#991b1b; border-radius:8px; padding:10px; font-size:13px; margin-top:12px; }
-    .login-help { color:#64748b; font-size:12px; line-height:1.45; margin-top:16px; text-align:center; }
-    header { background:linear-gradient(135deg,#061a35 0%,#0b2e55 58%,#174a78 100%); box-shadow:0 4px 18px rgba(6,26,53,.18); }
-    .topbar { background:linear-gradient(135deg,#ffffff 0%,#f8fbff 100%); border:1px solid #e2e8f0; border-radius:18px; padding:18px; box-shadow:0 5px 18px rgba(15,23,42,.06); }
-    .topbar h2 { color:#061a35; letter-spacing:-.3px; }
-    .card { border:1px solid #e5eaf1; transition:transform .18s ease, box-shadow .18s ease; }
-    .card:hover { transform:translateY(-2px); box-shadow:0 8px 22px rgba(15,23,42,.11); }
-    .panel { border:1px solid #e5eaf1; }
-    .panel h3 { color:#061a35; }
-    .filters { display:flex; gap:9px; flex-wrap:wrap; align-items:end; }
-    .filter-item { min-width:145px; }
-    .filter-item.search { min-width:230px; }
-    .filter-item label { margin-top:0; font-size:11px; font-weight:bold; text-transform:uppercase; letter-spacing:.04em; }
-    .filter-item input, .filter-item select { margin-top:4px; padding:9px; }
-    .toast { position:fixed; right:22px; bottom:22px; z-index:300; min-width:250px; max-width:calc(100% - 44px); padding:13px 16px; border-radius:11px; color:#fff; font-size:13px; font-weight:bold; box-shadow:0 10px 28px rgba(15,23,42,.24); opacity:0; transform:translateY(12px); pointer-events:none; transition:opacity .2s ease, transform .2s ease; }
-    .toast.show { opacity:1; transform:translateY(0); }
-    .toast.success { background:#15803d; } .toast.error { background:#b91c1c; } .toast.info { background:#1d4ed8; }
-    .tablewrap table tbody tr:hover { background:#f8fbff; }
-    .dashboard-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:18px; }
-    .chart-panel { min-height:330px; }
-    .chart-panel canvas { width:100% !important; height:260px !important; max-height:285px; }
-    .dashboard-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-    .dashboard-metric { background:linear-gradient(135deg,#061a35,#174a78); color:#fff; border-radius:14px; padding:15px; }
-    .dashboard-metric small { color:#cbd5e1; display:block; }
-    .dashboard-metric strong { display:block; margin-top:7px; font-size:18px; }
-    .chart-note { color:var(--muted); font-size:12px; margin:0 0 12px; }
-    .wa-btn { background:#16a34a; }
-    .estoque-baixo { color:var(--red); font-weight:bold; }
-    .estoque-ok { color:var(--green); font-weight:bold; }
-    .estoque-resumo { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
-    .estoque-resumo .card { padding:12px; }
-    @media (max-width:750px) { .estoque-resumo { grid-template-columns:1fr; } }
-    @media (max-width:750px) { .dashboard-grid { grid-template-columns:1fr; } .dashboard-metrics { grid-template-columns:1fr; } }
-    .hint { color:var(--muted); font-size:12px; margin:4px 0 12px; }
-    @media (max-width:1050px) { .cards { grid-template-columns:repeat(3,1fr); } }
-    @media (max-width:750px) { header > div { align-items:flex-start; } .brand img { width:150px; } .brand-text { display:none; } .grid { grid-template-columns:1fr; } .cards { grid-template-columns:repeat(2,1fr); } .row { grid-template-columns:1fr; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#061a35">
+<title>Pré-Moldados Custo Certo</title>
+<style>
+:root{--navy:#061a35;--navy2:#0b2b52;--blue:#1769aa;--green:#16834b;--red:#c62828;--yellow:#b77900;--bg:#f3f6fa;--card:#fff;--text:#152235;--muted:#66758a;--line:#dfe6ee;--shadow:0 8px 25px rgba(10,35,65,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app{display:none;min-height:100vh}.sidebar{position:fixed;left:0;top:0;bottom:0;width:250px;background:linear-gradient(180deg,var(--navy),#082442);color:#fff;padding:20px 14px;z-index:20}.brand{font-weight:800;font-size:18px;padding:8px 10px 20px}.brand small{display:block;font-size:11px;opacity:.7;margin-top:5px;font-weight:500}.nav button{display:block;width:100%;text-align:left;background:transparent;color:#dce8f6;padding:11px 13px;border-radius:10px;margin:3px 0}.nav button:hover,.nav button.active{background:rgba(255,255,255,.11);color:#fff}.main{margin-left:250px;min-height:100vh}.top{height:68px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 25px;position:sticky;top:0;z-index:10}.top h1{font-size:20px;margin:0}.content{padding:24px;max-width:1450px;margin:auto}.grid{display:grid;gap:16px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);padding:18px}.metric{padding:17px}.metric .label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase}.metric .value{font-size:25px;font-weight:800;margin-top:7px}.metric .sub{font-size:12px;color:var(--muted);margin-top:4px}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px}.section-title h2{font-size:17px;margin:0}.btn{padding:10px 14px;border-radius:9px;font-weight:700;background:var(--navy);color:#fff}.btn.secondary{background:#eaf0f7;color:var(--navy)}.btn.green{background:var(--green)}.btn.red{background:var(--red)}.btn.yellow{background:#f5e7c2;color:#754f00}.btn.sm{padding:7px 10px;font-size:12px}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}.field input,.field select,.field textarea{width:100%;border:1px solid #cfd9e5;border-radius:9px;padding:10px 11px;background:#fff;outline:none}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(23,105,170,.1)}.full{grid-column:1/-1}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:13px}.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}.table th{font-size:11px;text-transform:uppercase;color:var(--muted)}.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800}.ok{background:#def5e8;color:#11683c}.warn{background:#fff0c9;color:#7b5600}.bad{background:#fde2e2;color:#a31d1d}.info{background:#e2eefb;color:#12558e}.notice{padding:12px 14px;border-radius:10px;background:#edf5ff;border-left:4px solid var(--blue);font-size:13px;margin-bottom:14px}.calc{background:linear-gradient(135deg,#f8fbff,#fff);border:1px solid #dce8f5;border-radius:13px;padding:16px}.big{font-size:30px;font-weight:900}.green-text{color:var(--green)}.red-text{color:var(--red)}.yellow-text{color:var(--yellow)}.muted{color:var(--muted)}.hidden{display:none!important}.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 20% 10%,#164c7e,#061a35 60%)}.login-card{width:min(430px,100%);background:#fff;border-radius:20px;padding:30px;box-shadow:0 25px 70px rgba(0,0,0,.25)}.login-logo{font-size:22px;font-weight:900;color:var(--navy);margin-bottom:4px}.login-sub{color:var(--muted);margin-bottom:25px;font-size:13px}.mobile-menu{display:none}.empty{padding:25px;text-align:center;color:var(--muted)}.calc-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}.line{border-top:1px solid var(--line);margin:14px 0}.result-row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px}.result-row.total{font-weight:900;font-size:16px}.danger-box{border:1px solid #f1bcbc;background:#fff5f5;padding:14px;border-radius:11px}.success-box{border:1px solid #b9e2ca;background:#f4fff8;padding:14px;border-radius:11px}.mini{font-size:11px}.toast{position:fixed;right:20px;bottom:20px;background:#152235;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:var(--shadow);z-index:100;opacity:0;transform:translateY(10px);transition:.2s}.toast.show{opacity:1;transform:translateY(0)}@media(max-width:950px){.sidebar{transform:translateX(-100%);transition:.2s}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.mobile-menu{display:block}.g4{grid-template-columns:repeat(2,1fr)}.g3,.calc-grid{grid-template-columns:1fr}.top{padding:0 15px}.content{padding:15px}}@media(max-width:600px){.g2,.g4,.form{grid-template-columns:1fr}.content{padding:12px}.top h1{font-size:16px}.card{padding:14px}}
+</style>
 </head>
 <body>
-  <section id="loginScreen" class="login-screen">
-    <div class="login-box">
-      <img class="login-logo" src="logo_lajes.png" alt="Lajes Pré-Moldados">
-      <h1>Acesso restrito</h1>
-      <p class="login-subtitle">Entre para acessar vendas, despesas e lucro real.</p>
-      <form id="loginForm" novalidate>
-        <label for="loginEmail">E-mail</label>
-        <input type="email" id="loginEmail" autocomplete="username" required placeholder="seu@email.com">
-        <label for="loginPassword">Senha</label>
-        <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="Sua senha">
-        <button type="submit" class="bluebtn" id="loginButton">ENTRAR</button>
-        <div id="loginError" class="login-error" role="alert"></div>
-      </form>
-      <p class="login-help">Use o mesmo e-mail e senha cadastrados em <strong>Supabase &gt; Authentication &gt; Users</strong>.</p>
-    </div>
-  </section>
-
-  <div id="appShell" class="hidden">
-  <header>
-    <div>
-      <div class="brand">
-        <img src="logo_lajes.png" alt="Lajes Pré-Moldados">
-        <div class="brand-text"><strong>Controle de Vendas</strong><br><small id="syncStatus">Conectando...</small></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="status" id="configStatus"></span>
-        <span class="status" id="userEmail"></span>
-        <button class="graybtn" style="width:auto;margin:0" onclick="window.exportarBackup()">Backup</button>
-        <button class="bluebtn" style="width:auto;margin:0" onclick="window.abrirModalSenha()">Alterar Senha</button>
-        <button class="redbtn" style="width:auto;margin:0" onclick="window.sair()">Sair</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <div class="topbar">
-      <div>
-        <h2 style="margin:0">Gestão financeira</h2>
-        <div class="hint">Acompanhe vendas, pagamentos, despesas e lucro real em um só lugar.</div>
-      </div>
-      <div class="filters">
-        <div class="filter-item"><label for="filtroPeriodo">Período</label><input type="month" id="filtroPeriodo"></div>
-        <div class="filter-item search"><label for="filtroBusca">Buscar</label><input type="search" id="filtroBusca" placeholder="Cliente, pedido ou despesa"></div>
-        <div class="filter-item"><label for="filtroStatus">Status</label><select id="filtroStatus"><option value="">Todos</option><option>Aguardando</option><option>Produção</option><option>Entregue</option><option>Pago</option><option>Pendente</option><option>Agendado</option></select></div>
-      </div>
-    </div>
-
-    <section class="cards">
-      <div class="card"><small>Total em vendas</small><div id="tot" class="val blue">R$ 0,00</div></div>
-      <div class="card"><small>Recebido</small><div id="rec" class="val green">R$ 0,00</div></div>
-      <div class="card"><small>A receber</small><div id="arec" class="val red">R$ 0,00</div></div>
-      <div class="card"><small>Lucro bruto</small><div id="lucroBruto" class="val purple">R$ 0,00</div></div>
-      <div class="card"><small>Saídas pagas</small><div id="despesasPagas" class="val red">R$ 0,00</div></div>
-      <div class="card"><small>Lucro real</small><div id="lucroReal" class="val green">R$ 0,00</div></div>
-    </section>
-
-    <nav class="tabs" aria-label="Módulos">
-      <button id="tabVendas" class="tab active" onclick="window.abrirAba('vendas')">Vendas</button>
-      <button id="tabDespesas" class="tab" onclick="window.abrirAba('despesas')">Saída de Caixa</button>
-      <button id="tabDashboard" class="tab" onclick="window.abrirAba('dashboard')">Dashboard</button>
-      <button id="tabEstoque" class="tab" onclick="window.abrirAba('estoque')">Estoque</button>
-    </nav>
-
-    <section id="abaVendas">
-      <div class="grid">
-        <div class="panel">
-          <h3>Ações de vendas</h3>
-          <button class="greenbtn" onclick="window.novo()">+ NOVA VENDA</button>
-          <button class="bluebtn" onclick="window.carregarTudo()">Atualizar dados</button>
-          <hr>
-          <p class="hint">O lucro bruto é calculado como valor da venda menos o custo estimado.</p>
-        </div>
-        <div class="panel tablewrap">
-          <h3>Vendas registradas</h3>
-          <table><thead><tr><th>Data</th><th>Cliente / pedido</th><th>Valor</th><th>Lucro</th><th>Status</th><th>Ações</th></tr></thead><tbody id="listaVendas"></tbody></table>
-        </div>
-      </div>
-    </section>
-
-    <section id="abaDespesas" class="hidden">
-      <div class="grid">
-        <div class="panel">
-          <h3>Ações de caixa</h3>
-          <button class="greenbtn" onclick="window.novaDespesa()">+ NOVA SAÍDA</button>
-          <button class="bluebtn" onclick="window.carregarTudo()">Atualizar dados</button>
-          <hr>
-          <p class="hint">Registre aluguel, salários, materiais, combustível, energia e qualquer pagamento da empresa.</p>
-        </div>
-        <div class="panel tablewrap">
-          <h3>Saídas de caixa registradas</h3>
-          <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody id="listaDespesas"></tbody></table>
-        </div>
-      </div>
-    </section>
-
-    <section id="abaDashboard" class="hidden">
-      <div class="dashboard-metrics">
-        <div class="dashboard-metric"><small>Lucro real no período</small><strong id="dashboardLucroReal">R$ 0,00</strong></div>
-        <div class="dashboard-metric"><small>Melhor mês dos últimos 6</small><strong id="dashboardMelhorMes">Ainda sem dados</strong></div>
-        <div class="dashboard-metric"><small>Maior venda registrada</small><strong id="dashboardMaiorVenda">R$ 0,00</strong></div>
-      </div>
-      <div id="dashboardAviso" class="hint"></div>
-      <div class="dashboard-grid">
-        <div class="panel chart-panel"><h3>Vendas, despesas e lucro real</h3><p class="chart-note">Comparativo mensal dos últimos seis meses.</p><canvas id="graficoEvolucao"></canvas></div>
-        <div class="panel chart-panel"><h3>Despesas por categoria</h3><p class="chart-note">Distribuição das saídas pagas no período selecionado.</p><canvas id="graficoDespesas"></canvas></div>
-      </div>
-    </section>
-
-    <section id="abaEstoque" class="hidden">
-      <div class="estoque-resumo">
-        <div class="card"><small>Itens cadastrados</small><div id="estoqueTotalItens" class="val blue">0</div></div>
-        <div class="card"><small>Itens para repor</small><div id="estoqueBaixo" class="val red">0</div></div>
-        <div class="card"><small>Valor estimado em estoque</small><div id="estoqueValor" class="val green">R$ 0,00</div></div>
-      </div>
-      <div class="grid">
-        <div class="panel">
-          <h3>Ações de estoque</h3>
-          <button class="greenbtn" onclick="window.novoEstoque()">+ NOVO MATERIAL</button>
-          <button class="bluebtn" onclick="window.carregarTudo()">Atualizar estoque</button>
-          <hr>
-          <p class="hint">Cadastre materiais e use Entrada/Saída para ajustar as quantidades. O alerta aparece quando o saldo fica igual ou abaixo do mínimo.</p>
-        </div>
-        <div class="panel tablewrap">
-          <h3>Materiais cadastrados</h3>
-          <table><thead><tr><th>Produto</th><th>Categoria</th><th>Quantidade</th><th>Mínimo</th><th>Custo unitário</th><th>Status</th><th>Ações</th></tr></thead><tbody id="listaEstoque"></tbody></table>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <div id="modalVenda" class="modal"><div class="modalbox">
-    <h2 id="tituloVenda">Nova Venda</h2>
-    <form id="formVenda">
-      <input type="hidden" id="vendaId">
-      <div class="row"><div><label>Data</label><input type="date" id="data" required></div><div><label>Cliente</label><input type="text" id="cliente" required></div></div>
-      <label>WhatsApp do cliente</label><input type="tel" id="telefone" placeholder="(99) 99999-9999">
-      <label>Pedido</label><input type="text" id="pedido" placeholder="Ex.: 20 lajes">
-      <div class="row"><div><label>Valor da venda (R$)</label><input type="number" step="0.01" min="0" id="valor" required></div><div><label>Custo estimado (R$)</label><input type="number" step="0.01" min="0" id="custo" value="0"></div></div>
-      <div class="row"><div><label>Recebido (R$)</label><input type="number" step="0.01" min="0" id="recebido" value="0"></div><div><label>Status</label><select id="status"><option>Aguardando</option><option>Produção</option><option>Entregue</option></select></div></div>
-      <div class="actions"><button type="submit" class="greenbtn">SALVAR VENDA</button><button type="button" class="graybtn" onclick="window.fecharModais()">CANCELAR</button></div>
-    </form>
-  </div></div>
-
-  <div id="modalDespesa" class="modal"><div class="modalbox">
-    <h2 id="tituloDespesa">Nova Saída de Caixa</h2>
-    <form id="formDespesa">
-      <input type="hidden" id="despesaId">
-      <div class="row"><div><label>Data do pagamento</label><input type="date" id="dataDespesa" required></div><div><label>Valor (R$)</label><input type="number" step="0.01" min="0" id="valorDespesa" required></div></div>
-      <label>Descrição</label><input type="text" id="descricaoDespesa" placeholder="Ex.: Conta de energia de agosto" required>
-      <div class="row"><div><label>Categoria</label><select id="categoriaDespesa"><option>Aluguel</option><option>Salários</option><option>Materiais</option><option>Combustível</option><option>Energia</option><option>Água</option><option>Impostos</option><option>Manutenção</option><option>Frete</option><option>Outros</option></select></div><div><label>Status</label><select id="statusDespesa"><option>Pago</option><option>Pendente</option><option>Agendado</option></select></div></div>
-      <div class="actions"><button type="submit" class="greenbtn">SALVAR SAÍDA</button><button type="button" class="graybtn" onclick="window.fecharModais()">CANCELAR</button></div>
-    </form>
-  </div></div>
-
-  <div id="modalEstoque" class="modal"><div class="modalbox">
-    <h2 id="tituloEstoque">Novo Material</h2><p class="hint">Cadastre o saldo atual, a unidade e o limite para alerta de reposição.</p>
-    <form id="formEstoque">
-      <input type="hidden" id="estoqueId">
-      <div class="row"><div><label>Produto/material</label><input type="text" id="produtoEstoque" required placeholder="Ex.: Cimento CP-II"></div><div><label>Categoria</label><input type="text" id="categoriaEstoque" value="Material" required></div></div>
-      <div class="row"><div><label>Quantidade atual</label><input type="number" step="0.01" min="0" id="quantidadeEstoque" value="0" required></div><div><label>Unidade</label><select id="unidadeEstoque"><option>un</option><option>kg</option><option>t</option><option>m</option><option>m²</option><option>m³</option><option>saco</option><option>litro</option></select></div></div>
-      <div class="row"><div><label>Estoque mínimo</label><input type="number" step="0.01" min="0" id="minimoEstoque" value="0" required></div><div><label>Custo unitário (R$)</label><input type="number" step="0.01" min="0" id="custoUnitarioEstoque" value="0" required></div></div>
-      <div class="actions"><button type="submit" class="greenbtn">SALVAR MATERIAL</button><button type="button" class="graybtn" onclick="window.fecharModais()">CANCELAR</button></div>
-    </form>
-  </div></div>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <div id="modalSenha" class="modal"><div class="modalbox">
-    <h2>Alterar sua senha</h2><p class="hint">Defina uma nova senha para o seu acesso restrito.</p>
-    <form id="formSenha">
-      <label>Nova senha (mínimo 6 caracteres)</label><input type="password" id="novaSenha" required minlength="6">
-      <label>Confirme a nova senha</label><input type="password" id="confirmaSenha" required minlength="6">
-      <div class="actions"><button type="submit" class="bluebtn">ATUALIZAR SENHA</button><button type="button" class="graybtn" onclick="window.fecharModais()">CANCELAR</button></div>
-    </form>
-  </div></div>
-
-  <div id="modalBackup" class="modal"><div class="modalbox">
-    <h2>Restaurar backup</h2><p class="hint">Selecione um arquivo JSON exportado por este aplicativo.</p>
-    <input type="file" id="jsonFile" accept=".json">
-    <button class="bluebtn" onclick="window.processarImport()">IMPORTAR BACKUP</button><button class="graybtn" onclick="window.fecharModais()">FECHAR</button>
-  </div></div>
+<div id="loginScreen" class="login">
+  <div class="login-card">
+    <div class="login-logo">PRÉ-MOLDADOS CUSTO CERTO</div>
+    <div class="login-sub">Conheça seu custo real. Venda com lucro.</div>
+    <div class="field"><label>Senha</label><input id="loginPass" type="password" placeholder="Senha administrativa"></div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="login()">Entrar</button>
+    <p class="mini muted" style="margin-top:14px">Primeiro acesso: <b>admin123</b>. Altere a senha em Configurações.</p>
   </div>
+</div>
 
-  <script>
-    (function() {
-      'use strict';
-      var $ = function(id) { return document.getElementById(id); };
-      var money = function(n) { return Number(n || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); };
-      var esc = function(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }); };
-      var sb = null, vendas = [], despesas = [], estoque = [], abaAtual = 'vendas', usuarioAtual = null, chartEvolucao = null, chartDespesas = null;
+<div id="app" class="app">
+<aside id="sidebar" class="sidebar">
+  <div class="brand">PRÉ-MOLDADOS<br>CUSTO CERTO<small>Gestão de custos e precificação</small></div>
+  <nav class="nav">
+    <button data-page="dashboard">📊 Dashboard</button>
+    <button data-page="products">🏗️ Produtos</button>
+    <button data-page="materials">🧱 Materiais</button>
+    <button data-page="costs">🏭 Custos da Fábrica</button>
+    <button data-page="production">⚙️ Produção</button>
+    <button data-page="pricing">💰 Precificação</button>
+    <button data-page="simulator">🎯 Simulador de Venda</button>
+    <button data-page="goals">📈 Metas</button>
+    <button data-page="backup">💾 Backup</button>
+    <button data-page="settings">⚙️ Configurações</button>
+  </nav>
+</aside>
 
-      function cfg() { return {url:window.SUPABASE_URL, key:window.SUPABASE_PUBLISHABLE_KEY, owner:window.OWNER_USER_ID}; }
-      function hoje() { return new Date().toISOString().slice(0,10); }
-      function filtro(v) {
-        var p = $('filtroPeriodo').value;
-        var q = $('filtroBusca').value.trim().toLowerCase();
-        var st = $('filtroStatus').value;
-        var texto = [v.cliente, v.pedido, v.telefone, v.descricao, v.categoria].filter(Boolean).join(' ').toLowerCase();
-        return (!p || String(v.data || '').startsWith(p)) && (!q || texto.includes(q)) && (!st || String(v.status || '') === st);
-      }
-      function mostrarToast(message, type) {
-        var el = $('toast');
-        el.textContent = message;
-        el.className = 'toast show ' + (type || 'success');
-        clearTimeout(window.__toastTimer);
-        window.__toastTimer = setTimeout(function() { el.className = 'toast'; }, 3200);
-      }
-      window.mostrarToast = mostrarToast;
-      function badge(status) { var s = String(status || 'Pendente'); var c = s === 'Pago' ? 'pago' : (s === 'Agendado' ? 'agendado' : 'pendente'); return '<span class="badge '+c+'">'+esc(s.toUpperCase())+'</span>'; }
+<main class="main">
+<header class="top"><div class="row"><button class="btn secondary mobile-menu" onclick="toggleMenu()">☰</button><h1 id="pageTitle">Dashboard</h1></div><button class="btn secondary sm" onclick="logout()">Sair</button></header>
+<div id="content" class="content"></div>
+</main>
+</div>
+<div id="toast" class="toast"></div>
 
-      window.abrirAba = function(aba) {
-        abaAtual = aba;
-        $('abaVendas').classList.toggle('hidden', aba !== 'vendas');
-        $('abaDespesas').classList.toggle('hidden', aba !== 'despesas');
-        $('abaDashboard').classList.toggle('hidden', aba !== 'dashboard');
-        $('abaEstoque').classList.toggle('hidden', aba !== 'estoque');
-        $('tabVendas').classList.toggle('active', aba === 'vendas');
-        $('tabDespesas').classList.toggle('active', aba === 'despesas');
-        $('tabDashboard').classList.toggle('active', aba === 'dashboard');
-        $('tabEstoque').classList.toggle('active', aba === 'estoque');
-        if (aba === 'dashboard') window.renderDashboard();
-        if (aba === 'estoque') window.renderEstoque();
-      };
-      window.fecharModais = function() { $('modalVenda').style.display='none'; $('modalDespesa').style.display='none'; $('modalEstoque').style.display='none'; $('modalBackup').style.display='none'; $('modalSenha').style.display='none'; };
-
-      window.init = async function() {
-        var c = cfg();
-        if (!c.url || !c.key || !window.supabase || !window.supabase.createClient) {
-          $('loginError').textContent = 'A configuração do aplicativo não carregou. Verifique config.js.';
-          $('loginError').style.display = 'block';
-          return;
-        }
-        try {
-          sb = window.supabase.createClient(c.url, c.key, {auth:{persistSession:false, autoRefreshToken:false, detectSessionInUrl:false}});
-          $('configStatus').textContent = 'Online';
-          var sessionResult = await sb.auth.getSession();
-          if (sessionResult.error) throw sessionResult.error;
-          await window.aplicarSessao(sessionResult.data.session);
-          sb.auth.onAuthStateChange(function(_event, session) {
-            window.setTimeout(function() { window.aplicarSessao(session); }, 0);
-          });
-        } catch (e) {
-          $('loginError').textContent = 'Não foi possível iniciar a autenticação. Recarregue a página.';
-          $('loginError').style.display = 'block';
-          console.error('Falha ao iniciar a autenticação:', e);
-        }
-      };
-
-      window.aplicarSessao = async function(session) {
-        usuarioAtual = session && session.user ? session.user : null;
-        if (!usuarioAtual) {
-          $('appShell').classList.add('hidden');
-          $('loginScreen').classList.remove('hidden');
-          $('loginPassword').value = '';
-          $('loginButton').disabled = false;
-          $('loginButton').textContent = 'ENTRAR';
-          return;
-        }
-        $('loginScreen').classList.add('hidden');
-        $('appShell').classList.remove('hidden');
-        $('userEmail').textContent = usuarioAtual.email || '';
-        $('loginError').style.display = 'none';
-        await window.carregarTudo();
-      };
-
-      window.abrirModalSenha = function() { $('formSenha').reset(); $('modalSenha').style.display='block'; };
-
-      window.sair = async function() {
-        if (!sb) return;
-        var result = await sb.auth.signOut();
-        if (result.error) alert('Não foi possível sair: ' + result.error.message);
-      };
-
-      window.carregarTudo = async function() {
-        if (!sb || !usuarioAtual) return;
-        $('syncStatus').textContent = 'Sincronizando...';
-        var r = await Promise.all([sb.from('vendas').select('*').order('data',{ascending:false}), sb.from('despesas').select('*').order('data',{ascending:false}), sb.from('estoque').select('*').order('produto',{ascending:true})]);
-        if (r[0].error) { $('syncStatus').textContent = 'Erro em vendas'; console.error(r[0].error); }
-        else vendas = r[0].data || [];
-        if (r[1].error) { $('syncStatus').textContent = 'Crie a tabela despesas'; console.error(r[1].error); despesas = []; }
-        else despesas = r[1].data || [];
-        if (r[2].error) { console.error(r[2].error); estoque = []; }
-        else estoque = r[2].data || [];
-        $('syncStatus').textContent = r[0].error ? 'Erro de conexão' : (r[1].error ? 'Vendas online; despesas pendentes' : (r[2].error ? 'Vendas online; estoque pendente' : 'Sincronizado'));
-        window.renderVendas(); window.renderDespesas(); window.renderEstoque(); window.renderResumo(); window.renderDashboard();
-      };
-
-      window.renderResumo = function() {
-        var vs = vendas.filter(filtro), ds = despesas.filter(filtro), venda=0, rec=0, bruto=0, pagas=0;
-        vs.forEach(function(v) { var total=Number(v.valor||0)+Number(v.frete||0); venda+=total; rec+=Number(v.recebido||0); bruto+=total-Number(v.custo_estimado||0); });
-        ds.forEach(function(d) { if (String(d.status||'Pago') === 'Pago') pagas+=Number(d.valor||0); });
-        $('tot').textContent=money(venda); $('rec').textContent=money(rec); $('arec').textContent=money(venda-rec); $('lucroBruto').textContent=money(bruto); $('despesasPagas').textContent=money(pagas); $('lucroReal').textContent=money(bruto-pagas); $('dashboardLucroReal').textContent=money(bruto-pagas);
-      };
-
-      window.renderVendas = function() {
-        var list=vendas.filter(filtro), html=list.map(function(v) { var total=Number(v.valor||0)+Number(v.frete||0), lucro=total-Number(v.custo_estimado||0); return '<tr><td>'+esc(new Date(v.data+'T12:00').toLocaleDateString('pt-BR'))+'</td><td><strong>'+esc(v.cliente)+'</strong><br><small>'+esc(v.pedido||'')+'</small></td><td>'+money(total)+'</td><td class="'+(lucro>=0?'green':'red')+'">'+money(lucro)+'</td><td>'+esc(v.status||'')+'</td><td><button class="smallbtn pdfbtn" onclick="window.gerarOrcamento('+Number(v.id)+')">PDF</button><button class="smallbtn wa-btn" onclick="window.abrirWhatsApp('+Number(v.id)+')">WhatsApp</button><button class="smallbtn bluebtn" onclick="window.editarVenda('+Number(v.id)+')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirVenda('+Number(v.id)+')">Excluir</button></td></tr>'; }).join('');
-        $('listaVendas').innerHTML=html || '<tr><td colspan="6" class="empty">Nenhuma venda no período selecionado.</td></tr>';
-      };
-
-      window.renderDashboard = function() {
-        var aviso = $('dashboardAviso');
-        if (typeof Chart === 'undefined') {
-          aviso.textContent = 'Os gráficos não carregaram. Verifique a internet e recarregue a página; vendas e despesas continuam funcionando normalmente.';
-          return;
-        }
-        aviso.textContent = '';
-        var fim = new Date();
-        var periodo = $('filtroPeriodo').value;
-        if (periodo) fim = new Date(periodo + '-01T12:00:00');
-        fim.setDate(1);
-        var meses = [];
-        for (var i = 5; i >= 0; i--) { var d = new Date(fim.getFullYear(), fim.getMonth() - i, 1); meses.push({key:d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'), label:d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})}); }
-        var vm = {}, dm = {}, lm = {}, maior = 0;
-        meses.forEach(function(m) { vm[m.key]=0; dm[m.key]=0; lm[m.key]=0; });
-        vendas.forEach(function(v) { var key=String(v.data||'').slice(0,7); if (vm[key] !== undefined) { var total=Number(v.valor||0)+Number(v.frete||0); vm[key]+=total; lm[key]+=total-Number(v.custo_estimado||0); } if (Number(v.valor||0)+Number(v.frete||0)>maior) maior=Number(v.valor||0)+Number(v.frete||0); });
-        despesas.forEach(function(d) { var key=String(d.data||'').slice(0,7); if (dm[key] !== undefined && String(d.status||'Pago') === 'Pago') dm[key]+=Number(d.valor||0); });
-        var lucros = meses.map(function(m) { return lm[m.key] - dm[m.key]; });
-        var melhor = lucros.indexOf(Math.max.apply(null,lucros));
-        $('dashboardMelhorMes').textContent = melhor >= 0 ? meses[melhor].label + ' (' + money(lucros[melhor]) + ')' : 'Ainda sem dados';
-        $('dashboardMaiorVenda').textContent = money(maior);
-        if (chartEvolucao) chartEvolucao.destroy();
-        chartEvolucao = new Chart($('graficoEvolucao'), {type:'bar', data:{labels:meses.map(function(m){return m.label;}), datasets:[{label:'Vendas',data:meses.map(function(m){return vm[m.key];}),backgroundColor:'#2563eb',borderRadius:5},{label:'Despesas pagas',data:meses.map(function(m){return dm[m.key];}),backgroundColor:'#ef4444',borderRadius:5},{label:'Lucro real',data:lucros,backgroundColor:'#16a34a',borderRadius:5}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,ticks:{callback:function(value){return money(value);}}}}}});
-        var porCategoria = {};
-        despesas.filter(filtro).forEach(function(d) { if (String(d.status||'Pago') === 'Pago') porCategoria[d.categoria||'Outros']=(porCategoria[d.categoria||'Outros']||0)+Number(d.valor||0); });
-        var categorias=Object.keys(porCategoria), cores=['#2563eb','#16a34a','#f97316','#7e22ce','#e11d48','#0891b2','#ca8a04','#475569'];
-        if (chartDespesas) chartDespesas.destroy();
-        chartDespesas = new Chart($('graficoDespesas'), {type:'doughnut', data:{labels:categorias.length ? categorias : ['Sem despesas pagas'], datasets:[{data:categorias.length ? categorias.map(function(c){return porCategoria[c];}) : [1],backgroundColor:categorias.length ? categorias.map(function(_,i){return cores[i%cores.length];}) : ['#cbd5e1'],borderWidth:2,borderColor:'#fff'}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+money(ctx.raw);}}}}}});
-      };
-
-      window.renderEstoque = function() {
-        var q = $('filtroBusca').value.trim().toLowerCase();
-        var list = estoque.filter(function(i) { return !q || [i.produto,i.categoria,i.unidade].filter(Boolean).join(' ').toLowerCase().includes(q); });
-        var baixo = estoque.filter(function(i) { return Number(i.quantidade||0) <= Number(i.minimo||0); }).length;
-        $('estoqueTotalItens').textContent = String(estoque.length);
-        $('estoqueBaixo').textContent = String(baixo);
-        $('estoqueValor').textContent = money(estoque.reduce(function(t,i){return t + Number(i.quantidade||0)*Number(i.custo_unitario||0);},0));
-        var html = list.map(function(i) {
-          var quantidade = Number(i.quantidade||0), minimo = Number(i.minimo||0), isLow = quantidade <= minimo;
-          return '<tr><td><strong>'+esc(i.produto)+'</strong></td><td>'+esc(i.categoria||'Material')+'</td><td>'+quantidade.toLocaleString('pt-BR')+' '+esc(i.unidade||'un')+'</td><td>'+minimo.toLocaleString('pt-BR')+' '+esc(i.unidade||'un')+'</td><td>'+money(i.custo_unitario)+'</td><td class="'+(isLow?'estoque-baixo':'estoque-ok')+'">'+(isLow?'REPOR':'OK')+'</td><td><button class="smallbtn greenbtn" onclick="window.movimentarEstoque(\''+String(i.id)+'\',\'entrada\')">Entrada</button><button class="smallbtn graybtn" onclick="window.movimentarEstoque(\''+String(i.id)+'\',\'saida\')">Saída</button><button class="smallbtn bluebtn" onclick="window.editarEstoque(\''+String(i.id)+'\')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirEstoque(\''+String(i.id)+'\')">Excluir</button></td></tr>';
-        }).join('');
-        $('listaEstoque').innerHTML = html || '<tr><td colspan="7" class="empty">Nenhum material cadastrado.</td></tr>';
-      };
-
-      window.renderDespesas = function() {
-        var list=despesas.filter(filtro), html=list.map(function(d) { return '<tr><td>'+esc(new Date(d.data+'T12:00').toLocaleDateString('pt-BR'))+'</td><td><strong>'+esc(d.descricao)+'</strong></td><td>'+esc(d.categoria||'Outros')+'</td><td>'+money(d.valor)+'</td><td>'+badge(d.status)+'</td><td><button class="smallbtn bluebtn" onclick="window.editarDespesa('+Number(d.id)+')">Editar</button><button class="smallbtn redbtn" onclick="window.excluirDespesa('+Number(d.id)+')">Excluir</button></td></tr>'; }).join('');
-        $('listaDespesas').innerHTML=html || '<tr><td colspan="6" class="empty">Nenhuma saída de caixa no período selecionado.</td></tr>';
-      };
-
-      window.novo = function() { $('tituloVenda').textContent='Nova Venda'; $('formVenda').reset(); $('vendaId').value=''; $('data').value=hoje(); $('modalVenda').style.display='block'; };
-      window.gerarOrcamento = function(id) {
-        var v = vendas.find(function(x) { return Number(x.id) === Number(id); });
-        if (!v) return alert('Venda não encontrada.');
-        var total = Number(v.valor || 0) + Number(v.frete || 0);
-        var data = v.data ? new Date(v.data + 'T12:00').toLocaleDateString('pt-BR') : '';
-        var logo = new URL('logo_lajes.png', window.location.href).href;
-        var numero = String(v.id || '').padStart(5, '0');
-        var cliente = esc(v.cliente || '');
-        var pedido = esc(v.pedido || 'Não informado');
-        var status = esc(v.status || 'Aguardando');
-        var documento = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Orçamento ' + numero + ' - Lajes Pré-Moldados</title><style>' +
-          '@page{size:A4;margin:16mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#172033;margin:0;font-size:13px}header{border-bottom:5px solid #061a35;padding-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:20px}header img{width:265px;max-height:85px;object-fit:contain;object-position:left center}.company{text-align:right;color:#64748b;font-size:11px;line-height:1.55}.company strong{display:block;color:#061a35;font-size:14px}.title{display:flex;justify-content:space-between;align-items:end;margin:30px 0 20px}.title h1{font-size:25px;margin:0;color:#061a35;letter-spacing:.4px}.number{text-align:right;color:#64748b}.number strong{display:block;color:#061a35;font-size:15px}.client{border:1px solid #dbe3ed;border-radius:8px;padding:13px;margin-bottom:22px;background:#f8fbff}.client h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:0 0 7px}.client p{margin:3px 0;font-size:14px}.client b{color:#061a35}.items{width:100%;border-collapse:collapse;margin-top:10px}.items th{background:#061a35;color:white;text-align:left;padding:10px}.items td{padding:12px 10px;border-bottom:1px solid #e2e8f0}.items th:last-child,.items td:last-child{text-align:right}.totals{margin:24px 0 0 auto;width:310px}.totals p{display:flex;justify-content:space-between;margin:7px 0}.totals .grand{border-top:2px solid #061a35;padding-top:10px;font-size:18px;font-weight:bold;color:#061a35}.notes{margin-top:45px;border-top:1px solid #dbe3ed;padding-top:16px;color:#64748b;font-size:11px;line-height:1.55}.signature{margin-top:58px;display:grid;grid-template-columns:1fr 1fr;gap:70px;text-align:center;color:#64748b;font-size:11px}.signature div{border-top:1px solid #64748b;padding-top:7px}@media print{.no-print{display:none!important}}' +
-          '</style></head><body onload="setTimeout(function(){window.print()},400)"><header><img src="' + logo + '" alt="Lajes Pré-Moldados"><div class="company"><strong>LAJES PRÉ-MOLDADOS</strong>Orçamento comercial<br>Documento gerado em ' + new Date().toLocaleDateString('pt-BR') + '</div></header><section class="title"><h1>ORÇAMENTO</h1><div class="number">Nº <strong>' + numero + '</strong><br>Data: ' + data + '</div></section><section class="client"><h2>Dados do cliente</h2><p><b>Cliente:</b> ' + cliente + '</p><p><b>Pedido:</b> ' + pedido + '</p></section><table class="items"><thead><tr><th>Descrição</th><th>Quantidade / observação</th><th>Valor</th></tr></thead><tbody><tr><td>Fornecimento de lajes pré-moldadas</td><td>' + pedido + '</td><td>' + money(total) + '</td></tr></tbody></table><div class="totals"><p><span>Subtotal</span><span>' + money(total) + '</span></p><p><span>Status</span><span>' + status + '</span></p><p class="grand"><span>Total do orçamento</span><span>' + money(total) + '</span></p></div><div class="notes"><b>Observações:</b> Este orçamento é uma estimativa comercial. Valores, medidas, prazo de produção e entrega devem ser confirmados com a empresa antes da contratação. Validade sugerida: 7 dias.</div><div class="signature"><div>Responsável pela empresa</div><div>Cliente</div></div></body></html>';
-        var janela = window.open('', '_blank', 'width=900,height=700');
-        if (!janela) return alert('O navegador bloqueou a janela do PDF. Permita pop-ups para este site e tente novamente.');
-        janela.document.open();
-        janela.document.write(documento);
-        janela.document.close();
-      };
-
-      window.editarVenda = function(id) { var v=vendas.find(function(x){return Number(x.id)===Number(id);}); if(!v)return; $('tituloVenda').textContent='Editar Venda'; $('vendaId').value=v.id; $('data').value=v.data; $('cliente').value=v.cliente||''; $('telefone').value=v.telefone||''; $('pedido').value=v.pedido||''; $('valor').value=v.valor||0; $('custo').value=v.custo_estimado||0; $('recebido').value=v.recebido||0; $('status').value=v.status||'Aguardando'; $('modalVenda').style.display='block'; };
-      window.excluirVenda = async function(id) { if(!confirm('Excluir esta venda?'))return; var r=await sb.from('vendas').delete().eq('id',id); if(r.error) alert('Erro ao excluir: '+r.error.message); else { await window.carregarTudo(); mostrarToast('Venda excluída.','info'); } };
-      window.novaDespesa = function() { $('tituloDespesa').textContent='Nova Saída de Caixa'; $('formDespesa').reset(); $('despesaId').value=''; $('dataDespesa').value=hoje(); $('statusDespesa').value='Pago'; $('modalDespesa').style.display='block'; };
-      window.novoEstoque = function() { $('tituloEstoque').textContent='Novo Material'; $('formEstoque').reset(); $('estoqueId').value=''; $('categoriaEstoque').value='Material'; $('quantidadeEstoque').value=0; $('minimoEstoque').value=0; $('custoUnitarioEstoque').value=0; $('modalEstoque').style.display='block'; };
-      window.editarEstoque = function(id) { var i=estoque.find(function(x){return String(x.id)===String(id);}); if(!i)return; $('tituloEstoque').textContent='Editar Material'; $('estoqueId').value=i.id; $('produtoEstoque').value=i.produto||''; $('categoriaEstoque').value=i.categoria||'Material'; $('quantidadeEstoque').value=i.quantidade||0; $('unidadeEstoque').value=i.unidade||'un'; $('minimoEstoque').value=i.minimo||0; $('custoUnitarioEstoque').value=i.custo_unitario||0; $('modalEstoque').style.display='block'; };
-      window.movimentarEstoque = async function(id, tipo) { var i=estoque.find(function(x){return String(x.id)===String(id);}); if(!i)return; var valor=prompt((tipo==='entrada'?'Quantidade de entrada para ':'Quantidade de saída para ')+i.produto+':','1'); if(valor===null)return; var n=Number(String(valor).replace(',','.')); if(!Number.isFinite(n)||n<=0)return alert('Informe uma quantidade maior que zero.'); var atual=Number(i.quantidade||0), nova=tipo==='entrada'?atual+n:atual-n; if(nova<0)return alert('A saída não pode deixar o estoque negativo.'); var r=await sb.from('estoque').update({quantidade:nova,atualizado_em:new Date().toISOString()}).eq('id',id); if(r.error)alert('Erro ao atualizar estoque: '+r.error.message); else {await window.carregarTudo();mostrarToast((tipo==='entrada'?'Entrada':'Saída')+' registrada com sucesso.','success');} };
-      window.excluirEstoque = async function(id) { if(!confirm('Excluir este material do estoque?'))return; var r=await sb.from('estoque').delete().eq('id',id); if(r.error)alert('Erro ao excluir material: '+r.error.message); else {await window.carregarTudo();mostrarToast('Material excluído.','info');} };
-
-      window.editarDespesa = function(id) { var d=despesas.find(function(x){return Number(x.id)===Number(id);}); if(!d)return; $('tituloDespesa').textContent='Editar Saída de Caixa'; $('despesaId').value=d.id; $('dataDespesa').value=d.data; $('descricaoDespesa').value=d.descricao||''; $('categoriaDespesa').value=d.categoria||'Outros'; $('valorDespesa').value=d.valor||0; $('statusDespesa').value=d.status||'Pago'; $('modalDespesa').style.display='block'; };
-      window.excluirDespesa = async function(id) { if(!confirm('Excluir esta saída?'))return; var r=await sb.from('despesas').delete().eq('id',id); if(r.error) alert('Erro ao excluir: '+r.error.message); else { await window.carregarTudo(); mostrarToast('Saída excluída.','info'); } };
-
-      window.abrirWhatsApp = function(id) {
-        var v = vendas.find(function(x) { return Number(x.id) === Number(id); });
-        if (!v) return;
-        var telefone = String(v.telefone || '').replace(/\D/g, '');
-        if (!telefone) {
-          telefone = prompt('Informe o WhatsApp do cliente com DDD (ex.: 62999998888):', '');
-          if (!telefone) return;
-          telefone = String(telefone).replace(/\D/g, '');
-        }
-        if (telefone.length === 10 || telefone.length === 11) telefone = '55' + telefone;
-        if (telefone.length < 12) return alert('Informe um número válido com DDD.');
-        var nome = v.cliente || 'cliente';
-        var pedido = v.pedido || 'seu pedido';
-        var status = v.status || 'em andamento';
-        var texto = 'Olá, ' + nome + '! Aqui é da Lajes Pré-Moldados. Seu pedido (' + pedido + ') está com status: ' + status + '. Qualquer dúvida, estamos à disposição.';
-        window.open('https://wa.me/' + telefone + '?text=' + encodeURIComponent(texto), '_blank');
-      };
-
-
-      $('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        if (!sb) return;
-        var email = $('loginEmail').value.trim();
-        var password = $('loginPassword').value;
-        var errorBox = $('loginError');
-        if (!email || !password) {
-          errorBox.textContent = 'Informe o e-mail e a senha.';
-          errorBox.style.display = 'block';
-          return;
-        }
-        $('loginButton').disabled = true;
-        $('loginButton').textContent = 'ENTRANDO...';
-        errorBox.style.display = 'none';
-        var result = await sb.auth.signInWithPassword({email:email, password:password});
-        if (result.error) {
-          var msg = result.error.message || '';
-          if (/email not confirmed/i.test(msg)) {
-            msg = 'Este e-mail ainda não foi confirmado no Supabase. Confirme o usuário em Authentication > Users.';
-          } else if (/invalid login credentials/i.test(msg)) {
-            msg = 'E-mail ou senha incorretos.';
-          } else {
-            msg = 'Não foi possível entrar: ' + msg;
-          }
-          errorBox.textContent = msg;
-          errorBox.style.display = 'block';
-          $('loginButton').disabled = false;
-          $('loginButton').textContent = 'ENTRAR';
-        }
-      });
-
-      $('formVenda').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('data').value,cliente:$('cliente').value,telefone:$('telefone').value,pedido:$('pedido').value,valor:Number($('valor').value),custo_estimado:Number($('custo').value||0),recebido:Number($('recebido').value||0),status:$('status').value}; var id=$('vendaId').value; var r=id?await sb.from('vendas').update(dados).eq('id',id):await sb.from('vendas').insert([dados]); if(r.error){alert('Erro ao salvar venda: '+r.error.message);} else {window.fecharModais();await window.carregarTudo();mostrarToast(id ? 'Venda atualizada com sucesso.' : 'Venda salva com sucesso.','success');} });
-      $('formEstoque').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,produto:$('produtoEstoque').value.trim(),categoria:$('categoriaEstoque').value.trim()||'Material',quantidade:Number($('quantidadeEstoque').value||0),unidade:$('unidadeEstoque').value,minimo:Number($('minimoEstoque').value||0),custo_unitario:Number($('custoUnitarioEstoque').value||0),atualizado_em:new Date().toISOString()}; var id=$('estoqueId').value; var r=id?await sb.from('estoque').update(dados).eq('id',id):await sb.from('estoque').insert([dados]); if(r.error){alert('Erro ao salvar material: '+r.error.message);} else {window.fecharModais();await window.carregarTudo();mostrarToast(id ? 'Material atualizado com sucesso.' : 'Material salvo com sucesso.','success');} });
-      $('formDespesa').addEventListener('submit', async function(e) { e.preventDefault(); var dados={user_id:usuarioAtual.id,data:$('dataDespesa').value,descricao:$('descricaoDespesa').value,categoria:$('categoriaDespesa').value,valor:Number($('valorDespesa').value),status:$('statusDespesa').value}; var id=$('despesaId').value; var r=id?await sb.from('despesas').update(dados).eq('id',id):await sb.from('despesas').insert([dados]); if(r.error){alert('Erro ao salvar saída: '+r.error.message);} else {window.fecharModais();await window.carregarTudo();mostrarToast(id ? 'Saída atualizada com sucesso.' : 'Saída salva com sucesso.','success');} });
-
-      window.exportarBackup = function() { var blob=new Blob([JSON.stringify({exportado_em:new Date().toISOString(),vendas:vendas,despesas:despesas,estoque:estoque},null,2)],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='backup-lajes-'+hoje()+'.json'; a.click(); URL.revokeObjectURL(a.href); };
-      window.processarImport = function() { var file=$('jsonFile').files[0]; if(!file)return alert('Escolha um arquivo JSON.'); var rd=new FileReader(); rd.onload=async function(e){try{var j=JSON.parse(e.target.result), vs=Array.isArray(j)?j:(j.vendas||[]), ds=Array.isArray(j.despesas)?j.despesas:[], es=Array.isArray(j.estoque)?j.estoque:[]; if(vs.length)await sb.from('vendas').insert(vs.map(function(v){var x=Object.assign({},v);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); if(ds.length)await sb.from('despesas').insert(ds.map(function(d){var x=Object.assign({},d);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); if(es.length)await sb.from('estoque').insert(es.map(function(i){var x=Object.assign({},i);delete x.id;delete x.created_at;x.user_id=usuarioAtual.id;return x;})); mostrarToast('Backup importado com sucesso.','success'); window.fecharModais(); await window.carregarTudo();}catch(err){alert('Arquivo de backup inválido.');}}; rd.readAsText(file); };
-      $('filtroPeriodo').addEventListener('change',function(){window.renderVendas();window.renderDespesas();window.renderResumo();});
-      $('filtroBusca').addEventListener('input',function(){window.renderVendas();window.renderDespesas();window.renderEstoque();window.renderResumo();});
-      $('filtroStatus').addEventListener('change',function(){window.renderVendas();window.renderDespesas();window.renderResumo();window.renderDashboard();});
-      window.addEventListener('click',function(e){if(e.target.classList.contains('modal'))window.fecharModais();});
-      $('formSenha').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        var p1 = $('novaSenha').value, p2 = $('confirmaSenha').value;
-        if (p1 !== p2) return alert('As senhas não coincidem.');
-        if (p1.length < 6) return alert('A senha deve ter pelo menos 6 caracteres.');
-        var btn = e.target.querySelector('button[type="submit"]');
-        btn.disabled = true; btn.textContent = 'ATUALIZANDO...';
-        var r = await sb.auth.updateUser({ password: p1 });
-        btn.disabled = false; btn.textContent = 'ATUALIZAR SENHA';
-        if (r.error) alert('Erro ao mudar senha: ' + r.error.message);
-        else { mostrarToast('Senha alterada com sucesso!', 'success'); window.fecharModais(); }
-      });
-
-      window.addEventListener('load',window.init);
-    })();
-  </script>
+<script>
+const KEY='pm_custo_certo_v1';
+const BRL=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(n)||0);
+const num=v=>{let n=parseFloat(String(v??'').replace(',','.'));return Number.isFinite(n)?n:0};
+const id=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const initial={
+ settings:{company:'Lajes Pré-Moldados',hoursWeek:44,defaultLoss:5,defaultMargin:20,monthlyWeeks:4.33,password:'admin123'},
+ materials:[
+  {id:'cement',name:'Cimento CP V 40 kg',unit:'saco',price:42},
+  {id:'sand',name:'Areia',unit:'m³',price:100},
+  {id:'gravel',name:'Brita',unit:'m³',price:190},
+  {id:'truss',name:'Treliça 12 m',unit:'barra',price:59.75},
+  {id:'release',name:'Óleo desmoldante',unit:'litro',price:2}
+ ],
+ products:[{
+  id:'trilho',name:'Trilho Treliçado',category:'Trilhos',unit:'m',yieldQty:47,timeHours:1.5,loss:5,
+  components:[
+   {material:'cement',qty:1,mode:'fixed'},
+   {material:'sand',qty:9,mode:'liters18'},
+   {material:'gravel',qty:5,mode:'liters18'},
+   {material:'truss',qty:47,mode:'trussMeters'},
+   {material:'release',qty:1,mode:'fixed'}
+  ]
+ }],
+ costs:{energy:250,water:100,rent:300,maintenance:200,fuel:100,other:0,freightDefault:300},
+ labor:[{id:'l1',name:'Colaborador 1',weekly:500},{id:'l2',name:'Colaborador 2',weekly:300}],
+ production:[], simulations:[]
+};
+let db=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||structuredClone(initial)}catch(e){return structuredClone(initial)}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+function toast(t){const x=document.getElementById('toast');x.textContent=t;x.classList.add('show');setTimeout(()=>x.classList.remove('show'),2200)}
+function login(){const p=document.getElementById('loginPass').value;if(p===db.settings.password){sessionStorage.setItem('pm_auth','1');showApp()}else toast('Senha incorreta.')}
+function logout(){sessionStorage.removeItem('pm_auth');document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex'}
+function showApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';go('dashboard')}
+function toggleMenu(){document.getElementById('sidebar').classList.toggle('open')}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>go(b.dataset.page));
+function go(page){document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));document.getElementById('sidebar').classList.remove('open');const titles={dashboard:'Dashboard',products:'Produtos',materials:'Materiais',costs:'Custos da Fábrica',production:'Produção',pricing:'Precificação',simulator:'Simulador de Venda',goals:'Metas',backup:'Backup',settings:'Configurações'};document.getElementById('pageTitle').textContent=titles[page];const f={dashboard:dashboard,products:products,materials:materials,costs:costs,production:production,pricing:pricing,simulator:simulator,goals:goals,backup:backup,settings:settings}[page];document.getElementById('content').innerHTML=f();if(page==='pricing')calcPricing();if(page==='simulator')calcSim();if(page==='goals')calcGoal()}
+function materialCost(c){const m=db.materials.find(x=>x.id===c.material);if(!m)return 0;let q=num(c.qty);if(c.mode==='liters18')q=q*18/1000;else if(c.mode==='trussMeters')q=q/12;return q*m.price}
+function productCalc(p,overrideTime=null){const loss=num(p.loss??db.settings.defaultLoss)/100;const materialBase=p.components.reduce((a,c)=>a+materialCost(c),0);const material=materialBase*(1+loss);const laborWeek=db.labor.reduce((a,x)=>a+num(x.weekly),0);const laborHour=laborWeek/num(db.settings.hoursWeek||44);const time=overrideTime===null?num(p.timeHours):num(overrideTime);const labor=time*laborHour;const indirectMonth=num(db.costs.energy)+num(db.costs.water)+num(db.costs.rent)+num(db.costs.maintenance)+num(db.costs.fuel)+num(db.costs.other);const hoursMonth=num(db.settings.hoursWeek)*num(db.settings.monthlyWeeks||4.33);const indirectHour=hoursMonth?indirectMonth/hoursMonth:0;const indirect=time*indirectHour;const industrial=material+labor+indirect;const qty=num(p.yieldQty)||1;return {materialBase,lossValue:materialBase*loss,material,labor,laborHour,indirect,indirectHour,industrial,perUnit:industrial/qty,time,qty,indirectMonth}}
+function dashboard(){const trilho=db.products.find(p=>p.id==='trilho')||db.products[0];const c=trilho?productCalc(trilho):{perUnit:0,industrial:0,material:0};const month=new Date().toISOString().slice(0,7);const prod=db.production.filter(x=>x.date?.slice(0,7)===month);const qty=prod.reduce((a,x)=>a+num(x.qty),0);const cost=prod.reduce((a,x)=>a+num(x.cost),0);const fixed=num(db.costs.energy)+num(db.costs.water)+num(db.costs.rent)+num(db.costs.maintenance)+num(db.costs.fuel)+num(db.costs.other);return `<div class="grid g4"><div class="card metric"><div class="label">Custo do trilho</div><div class="value">${BRL(c.perUnit)}</div><div class="sub">por ${trilho?.unit||'unidade'}</div></div><div class="card metric"><div class="label">Material + perdas</div><div class="value">${BRL(c.material/trilho?.yieldQty||0)}</div><div class="sub">por unidade de rendimento</div></div><div class="card metric"><div class="label">Custos indiretos</div><div class="value">${BRL(fixed)}</div><div class="sub">mensais configurados</div></div><div class="card metric"><div class="label">Produção no mês</div><div class="value">${qty.toLocaleString('pt-BR')}</div><div class="sub">unidades registradas</div></div></div>
+<div class="grid g2" style="margin-top:16px"><div class="card"><div class="section-title"><h2>📌 Custo de referência do Trilho</h2><button class="btn sm" onclick="go('pricing')">Precificar</button></div>${memory(trilho,c)}</div><div class="card"><div class="section-title"><h2>Como o sistema trabalha</h2></div><div class="notice">O custo industrial é separado do frete e de outros custos da venda. A mão de obra e os custos indiretos são rateados pelo tempo de produção.</div><p class="muted">Atenção: os R$ 6,62/m e R$ 6,95/m são o custo de materiais direto e com perda, respectivamente. O custo industrial completo depende do tempo de produção e do rateio configurado.</p><div class="row"><button class="btn secondary" onclick="go('materials')">Editar materiais</button><button class="btn secondary" onclick="go('costs')">Editar custos</button></div></div></div>`}
+function memory(p,c){if(!p)return '<div class="empty">Cadastre um produto.</div>';return `<div class="result-row"><span>Rendimento</span><b>${num(p.yieldQty)} ${p.unit}</b></div><div class="result-row"><span>Material antes da perda</span><b>${BRL(c.materialBase)}</b></div><div class="result-row"><span>Perdas (${num(p.loss)}%)</span><b>${BRL(c.lossValue)}</b></div><div class="result-row"><span>Material após perda</span><b>${BRL(c.material)}</b></div><div class="result-row"><span>Mão de obra do lote</span><b>${BRL(c.labor)}</b></div><div class="result-row"><span>Custos indiretos do lote</span><b>${BRL(c.indirect)}</b></div><div class="line"></div><div class="result-row total"><span>Custo industrial do lote</span><b>${BRL(c.industrial)}</b></div><div class="result-row total"><span>Custo industrial por ${p.unit}</span><b>${BRL(c.perUnit)}</b></div>`}
+function products(){return `<div class="card"><div class="section-title"><h2>Produtos cadastrados</h2><button class="btn" onclick="productForm()">+ Novo produto</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Produto</th><th>Categoria</th><th>Unidade</th><th>Rendimento</th><th>Tempo</th><th>Custo</th><th>Ações</th></tr></thead><tbody>${db.products.map(p=>{const c=productCalc(p);return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.category)}</td><td>${p.unit}</td><td>${p.yieldQty}</td><td>${p.timeHours} h</td><td><b>${BRL(c.perUnit)}</b></td><td><button class="btn secondary sm" onclick="productForm('${p.id}')">Editar</button> <button class="btn red sm" onclick="delProduct('${p.id}')">Excluir</button></td></tr>`}).join('')}</tbody></table></div></div>`}
+function productForm(pid=null){const p=pid?db.products.find(x=>x.id===pid):{id:id(),name:'',category:'Trilhos',unit:'m',yieldQty:1,timeHours:1,loss:db.settings.defaultLoss,components:[]};document.getElementById('content').innerHTML=`<div class="card"><div class="section-title"><h2>${pid?'Editar':'Novo'} produto</h2><button class="btn secondary" onclick="go('products')">Voltar</button></div><div class="form"><div class="field"><label>Nome</label><input id="pn" value="${esc(p.name)}"></div><div class="field"><label>Categoria</label><select id="pc">${['Trilhos','Estacas','Manilhas','Lajotas','Pingadeiras','Blocos','Outros'].map(x=>`<option ${x===p.category?'selected':''}>${x}</option>`).join('')}</select></div><div class="field"><label>Unidade de venda</label><input id="pu" value="${esc(p.unit)}"></div><div class="field"><label>Rendimento do lote</label><input id="py" type="number" step="0.001" value="${p.yieldQty}"></div><div class="field"><label>Tempo de produção do lote (horas)</label><input id="pt" type="number" step="0.01" value="${p.timeHours}"></div><div class="field"><label>Perda de materiais (%)</label><input id="pl" type="number" step="0.01" value="${p.loss}"></div></div><div class="line"></div><div class="section-title"><h2>Composição</h2><button class="btn secondary sm" onclick="addComp()">+ Material</button></div><div id="comps"></div><div class="row" style="margin-top:16px"><button class="btn green" onclick="saveProduct('${p.id}')">Salvar produto</button><button class="btn secondary" onclick="go('products')">Cancelar</button></div></div>`;window.editingComps=structuredClone(p.components);renderComps()}
+function addComp(){window.editingComps.push({material:db.materials[0]?.id||'',qty:1,mode:'fixed'});renderComps()}
+function renderComps(){const el=document.getElementById('comps');if(!el)return;el.innerHTML=window.editingComps.map((c,i)=>`<div class="row" style="margin:7px 0"><select onchange="editingComps[${i}].material=this.value">${db.materials.map(m=>`<option value="${m.id}" ${m.id===c.material?'selected':''}>${esc(m.name)}</option>`).join('')}</select><input style="width:120px" type="number" step="0.001" value="${c.qty}" onchange="editingComps[${i}].qty=this.value"><select onchange="editingComps[${i}].mode=this.value"><option value="fixed" ${c.mode==='fixed'?'selected':''}>Quantidade direta</option><option value="liters18" ${c.mode==='liters18'?'selected':''}>Latas de 18 L</option><option value="trussMeters" ${c.mode==='trussMeters'?'selected':''}>Metros de treliça / barra 12m</option></select><button class="btn red sm" onclick="editingComps.splice(${i},1);renderComps()">×</button></div>`).join('')||'<div class="empty">Nenhum material.</div>'}
+function saveProduct(pid){const p=db.products.find(x=>x.id===pid)||{id:pid};Object.assign(p,{name:document.getElementById('pn').value.trim(),category:document.getElementById('pc').value,unit:document.getElementById('pu').value.trim()||'un',yieldQty:num(document.getElementById('py').value),timeHours:num(document.getElementById('pt').value),loss:num(document.getElementById('pl').value),components:structuredClone(window.editingComps)});if(!db.products.includes(p))db.products.push(p);save();toast('Produto salvo.');go('products')}
+function delProduct(pid){if(confirm('Excluir este produto?')){db.products=db.products.filter(x=>x.id!==pid);save();go('products')}}
+function materials(){return `<div class="card"><div class="section-title"><h2>Materiais e preços</h2><button class="btn" onclick="materialForm()">+ Novo material</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Unidade</th><th>Preço</th><th>Ações</th></tr></thead><tbody>${db.materials.map(m=>`<tr><td>${esc(m.name)}</td><td>${m.unit}</td><td><b>${BRL(m.price)}</b></td><td><button class="btn secondary sm" onclick="materialForm('${m.id}')">Editar</button> <button class="btn red sm" onclick="delMaterial('${m.id}')">Excluir</button></td></tr>`).join('')}</tbody></table></div></div>`}
+function materialForm(mid=null){const m=mid?db.materials.find(x=>x.id===mid):{id:id(),name:'',unit:'un',price:0};document.getElementById('content').innerHTML=`<div class="card"><div class="section-title"><h2>${mid?'Editar':'Novo'} material</h2><button class="btn secondary" onclick="go('materials')">Voltar</button></div><div class="form"><div class="field"><label>Nome</label><input id="mn" value="${esc(m.name)}"></div><div class="field"><label>Unidade de compra</label><input id="mu" value="${esc(m.unit)}"></div><div class="field"><label>Preço de compra</label><input id="mp" type="number" step="0.001" value="${m.price}"></div></div><div class="row" style="margin-top:16px"><button class="btn green" onclick="saveMaterial('${m.id}')">Salvar</button><button class="btn secondary" onclick="go('materials')">Cancelar</button></div></div>`}
+function saveMaterial(mid){const m=db.materials.find(x=>x.id===mid)||{id:mid};Object.assign(m,{name:document.getElementById('mn').value.trim(),unit:document.getElementById('mu').value.trim()||'un',price:num(document.getElementById('mp').value)});if(!db.materials.includes(m))db.materials.push(m);save();toast('Material salvo.');go('materials')}
+function delMaterial(mid){if(db.products.some(p=>p.components.some(c=>c.material===mid))){alert('Este material está usado em um produto. Remova-o da composição antes de excluir.');return}if(confirm('Excluir material?')){db.materials=db.materials.filter(x=>x.id!==mid);save();go('materials')}}
+function costs(){const c=db.costs;const lab=db.labor.reduce((a,x)=>a+x.weekly,0);return `<div class="grid g2"><div class="card"><div class="section-title"><h2>Custos mensais da fábrica</h2></div><div class="form">${[['energy','Energia'],['water','Água'],['rent','Aluguel/local'],['maintenance','Manutenção'],['fuel','Combustível'],['other','Outros custos industriais']].map(([k,l])=>`<div class="field"><label>${l} (R$/mês)</label><input id="c_${k}" type="number" step=".01" value="${c[k]}"></div>`).join('')}</div><div class="row" style="margin-top:16px"><button class="btn green" onclick="saveCosts()">Salvar custos</button></div><div class="line"></div><div class="notice">Frete não entra automaticamente no custo industrial. Ele será informado por pedido no simulador.</div></div><div class="card"><div class="section-title"><h2>Mão de obra</h2></div><div class="table-wrap"><table class="table"><thead><tr><th>Colaborador</th><th>Semanal</th><th>Ações</th></tr></thead><tbody>${db.labor.map(x=>`<tr><td>${esc(x.name)}</td><td>${BRL(x.weekly)}</td><td><button class="btn secondary sm" onclick="editLabor('${x.id}')">Editar</button></td></tr>`).join('')}</tbody></table></div><div class="form" style="margin-top:12px"><div class="field"><label>Horas semanais produtivas</label><input id="hoursWeek" type="number" step=".5" value="${db.settings.hoursWeek}"></div><div class="field"><label>Semanas/mês para cálculo</label><input id="weeksMonth" type="number" step=".01" value="${db.settings.monthlyWeeks}"></div></div><div class="row" style="margin-top:12px"><button class="btn green" onclick="saveLaborSettings()">Salvar mão de obra</button></div><div class="line"></div><div class="calc"><div class="label muted">Custo da equipe por hora</div><div class="big">${BRL(lab/db.settings.hoursWeek)}</div><div class="muted mini">${BRL(lab)} por semana ÷ ${db.settings.hoursWeek} h</div></div></div></div>`}
+function saveCosts(){['energy','water','rent','maintenance','fuel','other'].forEach(k=>db.costs[k]=num(document.getElementById('c_'+k).value));save();toast('Custos atualizados.');go('costs')}
+function editLabor(lid){const l=db.labor.find(x=>x.id===lid);const v=prompt('Valor semanal de '+l.name,l.weekly);if(v!==null){l.weekly=num(v);save();go('costs')}}
+function saveLaborSettings(){db.settings.hoursWeek=num(document.getElementById('hoursWeek').value)||44;db.settings.monthlyWeeks=num(document.getElementById('weeksMonth').value)||4.33;save();toast('Configuração salva.');go('costs')}
+function production(){return `<div class="card"><div class="section-title"><h2>Registro de produção</h2><button class="btn" onclick="prodForm()">+ Registrar produção</button></div><div class="notice">O registro de produção usa o custo calculado no momento do lançamento e guarda a memória do lote. Isso permite acompanhar o custo histórico.</div><div class="table-wrap"><table class="table"><thead><tr><th>Data</th><th>Produto</th><th>Quantidade</th><th>Tempo</th><th>Custo do lote</th><th>Custo/un</th><th>Ações</th></tr></thead><tbody>${db.production.slice().reverse().map(x=>`<tr><td>${x.date}</td><td>${esc(x.productName)}</td><td>${x.qty}</td><td>${x.time} h</td><td>${BRL(x.cost)}</td><td>${BRL(x.cost/Math.max(1,x.qty))}</td><td><button class="btn red sm" onclick="delProd('${x.id}')">Excluir</button></td></tr>`).join('')||'<tr><td colspan="7" class="empty">Nenhuma produção registrada.</td></tr>'}</tbody></table></div></div>`}
+function prodForm(){document.getElementById('content').innerHTML=`<div class="card"><div class="section-title"><h2>Registrar produção</h2><button class="btn secondary" onclick="go('production')">Voltar</button></div><div class="form"><div class="field"><label>Produto</label><select id="prp">${db.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Data</label><input id="prd" type="date" value="${new Date().toISOString().slice(0,10)}"></div><div class="field"><label>Quantidade produzida</label><input id="prq" type="number" step=".001" value="47"></div><div class="field"><label>Tempo gasto (horas)</label><input id="prt" type="number" step=".01" value="1.5"></div><div class="field full"><label>Observações</label><textarea id="pro"></textarea></div></div><div class="row" style="margin-top:16px"><button class="btn green" onclick="saveProd()">Registrar</button></div></div>`}
+function saveProd(){const p=db.products.find(x=>x.id===document.getElementById('prp').value),q=num(document.getElementById('prq').value),t=num(document.getElementById('prt').value);const c=productCalc(p,t);db.production.push({id:id(),date:document.getElementById('prd').value,productId:p.id,productName:p.name,qty:q,time:t,cost:(c.perUnit*q),note:document.getElementById('pro').value});save();toast('Produção registrada.');go('production')}
+function delProd(pid){db.production=db.production.filter(x=>x.id!==pid);save();go('production')}
+function pricing(){return `<div class="calc-grid"><div class="card"><div class="section-title"><h2>Precificação</h2></div><div class="form"><div class="field"><label>Produto</label><select id="priceProduct" onchange="calcPricing()">${db.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Margem desejada (%)</label><input id="priceMargin" type="number" step=".01" value="${db.settings.defaultMargin}" oninput="calcPricing()"></div><div class="field"><label>Quantidade do pedido (opcional)</label><input id="priceQty" type="number" step=".001" value="500" oninput="calcPricing()"></div></div><div id="pricingResult" style="margin-top:16px"></div></div><div class="card"><h2 style="font-size:17px">Memória de cálculo</h2><div id="pricingMemory"></div></div></div>`}
+function calcPricing(){const p=document.getElementById('priceProduct')?db.products.find(x=>x.id===document.getElementById('priceProduct').value):db.products[0];if(!p)return;const c=productCalc(p);const m=num(document.getElementById('priceMargin')?.value||db.settings.defaultMargin)/100;const price=m<1?c.perUnit/(1-m):Infinity;const q=num(document.getElementById('priceQty')?.value||1);const el=document.getElementById('pricingResult');if(el)el.innerHTML=`<div class="calc"><div class="muted">Custo industrial por ${p.unit}</div><div class="big">${BRL(c.perUnit)}</div><div class="line"></div><div class="result-row"><span>Margem desejada</span><b>${(m*100).toFixed(2)}%</b></div><div class="result-row total"><span>Preço sugerido</span><b class="green-text">${BRL(price)}</b></div><div class="result-row"><span>Receita para ${q} ${p.unit}</span><b>${BRL(price*q)}</b></div><div class="result-row"><span>Lucro estimado</span><b>${BRL((price-c.perUnit)*q)}</b></div></div>`;const mem=document.getElementById('pricingMemory');if(mem)mem.innerHTML=memory(p,c)}
+function simulator(){return `<div class="calc-grid"><div class="card"><div class="section-title"><h2>Simulador de venda</h2></div><div class="form"><div class="field"><label>Produto</label><select id="simProduct" onchange="calcSim()">${db.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>Quantidade</label><input id="simQty" type="number" step=".001" value="500" oninput="calcSim()"></div><div class="field"><label>Preço de venda por unidade</label><input id="simPrice" type="number" step=".01" value="13" oninput="calcSim()"></div><div class="field"><label>Frete do pedido</label><input id="simFreight" type="number" step=".01" value="0" oninput="calcSim()"></div><div class="field"><label>Outros custos da venda</label><input id="simOther" type="number" step=".01" value="0" oninput="calcSim()"></div></div><div id="simResult" style="margin-top:16px"></div></div><div class="card"><div class="section-title"><h2>Testar preços</h2></div><div class="notice">Informe quantidade e o sistema compara preços automaticamente.</div><div id="priceTable"></div></div></div>`}
+function calcSim(){const p=document.getElementById('simProduct')?db.products.find(x=>x.id===document.getElementById('simProduct').value):db.products[0];if(!p)return;const c=productCalc(p),q=num(document.getElementById('simQty')?.value||500),price=num(document.getElementById('simPrice')?.value||0),freight=num(document.getElementById('simFreight')?.value||0),other=num(document.getElementById('simOther')?.value||0);const industrial=c.perUnit*q,total=industrial+freight+other,revenue=price*q,profit=revenue-total,margin=revenue?profit/revenue*100:0;const cls=profit<0?'danger-box':'success-box';document.getElementById('simResult').innerHTML=`<div class="${cls}"><div class="result-row"><span>Receita</span><b>${BRL(revenue)}</b></div><div class="result-row"><span>Custo industrial</span><b>${BRL(industrial)}</b></div><div class="result-row"><span>Frete + outros</span><b>${BRL(freight+other)}</b></div><div class="line"></div><div class="result-row total"><span>${profit<0?'PREJUÍZO':'LUCRO'}</span><b class="${profit<0?'red-text':'green-text'}">${BRL(profit)}</b></div><div class="result-row"><span>Margem real</span><b>${margin.toFixed(2)}%</b></div></div>`;const min=c.perUnit+(freight+other)/Math.max(1,q);const prices=[10,11,12,13,14,15];document.getElementById('priceTable').innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>Preço</th><th>Receita</th><th>Resultado</th><th>Margem</th></tr></thead><tbody>${prices.map(v=>{const pr=v*q;const lu=pr-total;const ma=pr?lu/pr*100:0;return `<tr><td><b>${BRL(v)}</b></td><td>${BRL(pr)}</td><td class="${lu<0?'red-text':'green-text'}"><b>${BRL(lu)}</b></td><td>${ma.toFixed(1)}%</td></tr>`}).join('')}</tbody></table></div><div class="notice" style="margin-top:12px">Preço mínimo para não perder dinheiro neste pedido: <b>${BRL(min)}/${p.unit}</b>.</div>`}
+function goals(){return `<div class="card"><div class="section-title"><h2>Meta de faturamento</h2></div><div class="form"><div class="field"><label>Custos fixos mensais</label><input id="gFixed" type="number" step=".01" value="${monthlyFixed()} " oninput="calcGoal()"></div><div class="field"><label>Lucro desejado</label><input id="gProfit" type="number" step=".01" value="3000" oninput="calcGoal()"></div><div class="field"><label>Margem média esperada (%)</label><input id="gMargin" type="number" step=".01" value="${db.settings.defaultMargin}" oninput="calcGoal()"></div><div class="field"><label>Produto para converter em quantidade</label><select id="gProduct" onchange="calcGoal()">${db.products.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div></div><div id="goalResult" style="margin-top:18px"></div></div>`}
+function monthlyFixed(){return num(db.costs.energy)+num(db.costs.water)+num(db.costs.rent)+num(db.costs.maintenance)+num(db.costs.fuel)+num(db.costs.other)+db.labor.reduce((a,x)=>a+x.weekly,0)*num(db.settings.monthlyWeeks)}
+function calcGoal(){const fixed=num(document.getElementById('gFixed')?.value||monthlyFixed()),profit=num(document.getElementById('gProfit')?.value||3000),margin=num(document.getElementById('gMargin')?.value||20)/100,qprod=document.getElementById('gProduct')?db.products.find(x=>x.id===document.getElementById('gProduct').value):db.products[0];const fatur=margin>0?(fixed+profit)/margin:0;const c=qprod?productCalc(qprod).perUnit:0;const qty=c?fatur/(c/(1-margin)):0;document.getElementById('goalResult').innerHTML=`<div class="grid g3"><div class="calc"><div class="muted">Faturamento necessário</div><div class="big">${BRL(fatur)}</div></div><div class="calc"><div class="muted">Meta semanal</div><div class="big">${BRL(fatur/4.33)}</div></div><div class="calc"><div class="muted">Meta diária (6 dias)</div><div class="big">${BRL(fatur/(4.33*6))}</div></div></div><div class="notice" style="margin-top:14px">Conversão aproximada para <b>${esc(qprod?.name||'produto')}</b>: ${qty.toLocaleString('pt-BR',{maximumFractionDigits:2})} ${qprod?.unit||'unidades'} por mês, usando o preço calculado com a margem informada.</div>`}
+function backup(){return `<div class="grid g2"><div class="card"><h2 style="font-size:17px">Backup</h2><p class="muted">Exporte todos os dados para um arquivo JSON. Guarde esse arquivo em local seguro.</p><button class="btn" onclick="exportData()">⬇ Exportar backup</button></div><div class="card"><h2 style="font-size:17px">Restaurar</h2><p class="muted">Importe um backup criado por este sistema.</p><input type="file" id="importFile" accept=".json"><button class="btn secondary" style="margin-top:10px" onclick="importData()">Importar backup</button></div></div>`}
+function exportData(){const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-custo-certo-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
+function importData(){const f=document.getElementById('importFile').files[0];if(!f)return toast('Selecione um arquivo JSON.');const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.settings||!x.materials||!x.products)throw 0;db=x;save();toast('Backup restaurado.');go('dashboard')}catch(e){alert('Backup inválido.')}};r.readAsText(f)}
+function settings(){return `<div class="grid g2"><div class="card"><h2 style="font-size:17px">Configurações gerais</h2><div class="form"><div class="field full"><label>Nome da empresa</label><input id="setCompany" value="${esc(db.settings.company)}"></div><div class="field"><label>Margem padrão (%)</label><input id="setMargin" type="number" step=".01" value="${db.settings.defaultMargin}"></div><div class="field"><label>Perda padrão (%)</label><input id="setLoss" type="number" step=".01" value="${db.settings.defaultLoss}"></div></div><button class="btn green" style="margin-top:15px" onclick="saveSettings()">Salvar configurações</button></div><div class="card"><h2 style="font-size:17px">Alterar senha</h2><div class="form"><div class="field"><label>Senha atual</label><input id="oldPass" type="password"></div><div class="field"><label>Nova senha</label><input id="newPass" type="password"></div></div><button class="btn" style="margin-top:15px" onclick="changePass()">Alterar senha</button><div class="notice" style="margin-top:15px">Esta V1 usa armazenamento local do navegador. Para uma operação multi-dispositivo com autenticação real e banco em nuvem, será necessário conectar o projeto a um backend/Supabase na etapa de publicação.</div></div></div>`}
+function saveSettings(){db.settings.company=document.getElementById('setCompany').value.trim()||'Lajes Pré-Moldados';db.settings.defaultMargin=num(document.getElementById('setMargin').value);db.settings.defaultLoss=num(document.getElementById('setLoss').value);save();toast('Configurações salvas.');go('dashboard')}
+function changePass(){if(document.getElementById('oldPass').value!==db.settings.password)return toast('Senha atual incorreta.');const n=document.getElementById('newPass').value;if(n.length<6)return toast('A nova senha deve ter pelo menos 6 caracteres.');db.settings.password=n;save();toast('Senha alterada.')}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.activeElement?.id==='loginPass')login()});
+if(sessionStorage.getItem('pm_auth')==='1')showApp();
+</script>
 </body>
 </html>
