@@ -22,6 +22,8 @@ button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.app{di
   <div class="field"><label>E-mail</label><input id="loginEmail" type="email" placeholder="seu@email.com" autocomplete="username"></div>
   <div class="field"><label>Senha</label><input id="loginPass" type="password" placeholder="Senha do Supabase" autocomplete="current-password"></div>
   <button class="btn" style="width:100%;margin-top:14px" onclick="login()">Entrar</button>
+  <button class="btn secondary" style="width:100%;margin-top:8px" onclick="requestPasswordReset()">Esqueci minha senha</button>
+  <div id="resetBox" class="hidden" style="margin-top:15px;padding-top:15px;border-top:1px solid var(--line)"><div class="field"><label>Nova senha</label><input id="resetNewPass" type="password" minlength="6" placeholder="Mínimo de 6 caracteres"></div><button class="btn green" style="width:100%;margin-top:10px" onclick="finishPasswordReset()">Salvar nova senha</button></div>
   <p class="mini muted" style="margin-top:14px">Use o e-mail e a senha cadastrados no Supabase Authentication.</p>
   </div>
 </div>
@@ -91,7 +93,9 @@ let db=load();
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||structuredClone(initial)}catch(e){return structuredClone(initial)}}
 function save(){localStorage.setItem(KEY,JSON.stringify(db));scheduleSync()}
 function toast(t){const x=document.getElementById('toast');x.textContent=t;x.classList.add('show');setTimeout(()=>x.classList.remove('show'),2200)}
-async function login(){const email=document.getElementById('loginEmail').value.trim(),p=document.getElementById('loginPass').value;if(!email||!p)return toast('Informe e-mail e senha.');if(!sb)return toast('Supabase não configurado. Verifique config.js.');setSyncStatus('Entrando...');const r=await sb.auth.signInWithPassword({email,password:p});if(r.error){setSyncStatus('Falha no login');return toast('Login não autorizado: '+r.error.message)}currentUser=r.data.user;sessionStorage.setItem('pm_auth','1');await syncFromCloud();showApp()}
+async function login(){const email=document.getElementById('loginEmail').value.trim(),p=document.getElementById('loginPass').value;if(!email||!p)return toast('Informe e-mail e senha.');if(!sb)return toast('Supabase não configurado. Verifique config.js.');setSyncStatus('Entrando...');const r=await sb.auth.signInWithPassword({email,password:p});if(r.error){setSyncStatus('Falha no login');return toast('Login não autorizado: '+r.error.message)}currentUser=r.data.user;sessionStorage.setItem('pm_auth','1');await syncFromCloud();showApp()} 
+async function requestPasswordReset(){const email=document.getElementById('loginEmail').value.trim();if(!email)return toast('Digite seu e-mail antes de solicitar a recuperação.');if(!sb)return toast('Supabase não configurado.');const redirectTo=window.location.origin+window.location.pathname;const r=await sb.auth.resetPasswordForEmail(email,{redirectTo});if(r.error)return toast('Não foi possível enviar: '+r.error.message);toast('Link enviado. Verifique seu e-mail.')} 
+async function finishPasswordReset(){const p=document.getElementById('resetNewPass').value;if(p.length<6)return toast('Use uma senha com pelo menos 6 caracteres.');if(!sb)return toast('Supabase não configurado.');const r=await sb.auth.updateUser({password:p});if(r.error)return toast('Não foi possível alterar: '+r.error.message);document.getElementById('resetBox').classList.add('hidden');toast('Senha alterada. Agora faça login.');await sb.auth.signOut()}
 async function logout(){if(sb)await sb.auth.signOut();currentUser=null;sessionStorage.removeItem('pm_auth');document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex'}
 function showApp(){document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';go('dashboard');setSyncStatus(currentUser?'Sincronizado':'Modo local')}
 function toggleMenu(){document.getElementById('sidebar').classList.toggle('open')}
@@ -137,7 +141,7 @@ function saveSettings(){db.settings.company=document.getElementById('setCompany'
 async function changePass(){const n=document.getElementById('newPass').value;if(n.length<6)return toast('A nova senha deve ter pelo menos 6 caracteres.');if(!sb||!currentUser)return toast('Faça login no Supabase para alterar a senha.');const r=await sb.auth.updateUser({password:n});if(r.error)return toast('Não foi possível alterar: '+r.error.message);toast('Senha do Supabase alterada.')}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.activeElement?.id==='loginPass')login()});
-async function restoreSession(){if(!sb)return;const r=await sb.auth.getSession();if(r.data?.session){currentUser=r.data.session.user;await syncFromCloud();showApp()}}
+async function restoreSession(){if(!sb)return;sb.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){document.getElementById('resetBox')?.classList.remove('hidden');toast('Defina sua nova senha abaixo.')}});const r=await sb.auth.getSession();if(r.data?.session){currentUser=r.data.session.user;await syncFromCloud();showApp()}}
 restoreSession();
 </script>
 </body>
